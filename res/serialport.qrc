@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/">
+        <file>images/view-refresh.svg</file>
+        <file>images/system-run.svg</file>
+        <file>images/process-stop.svg</file>
+        <file>images/dialog-apply.svg</file>
+        <file>images/gtk-info.svg</file>
+        <file>images/warning.svg</file>
+        <file>images/error.svg</file>
+        <file>images/helpicon.svg</file>
+    </qresource>
+</RCC>
