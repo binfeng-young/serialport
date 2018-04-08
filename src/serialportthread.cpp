@@ -86,13 +86,18 @@ void SerialPortThread::onOpen()
 
 void SerialPortThread::run()
 {
+    QString buff;
     while (PortStatus::open == m_portStatus) {
-        char c[1];
+        char c;
         m_serialDevice->waitForBytesWritten(1);
-        if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead(0)) {
-            m_serialDevice->read(c, 1);
-            if (c[0] != '\r') {
-                emit showString(QString(c[0]));
+        if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead()) {
+            m_serialDevice->read(&c, 1);
+            if (c != '\r') {
+                buff.append(c);
+                if (buff.length() >= 10 && c == '\n') {
+                    emit showString(QString(buff));
+                    buff.clear();
+                }
             }
         }
         QThread::msleep(1);
