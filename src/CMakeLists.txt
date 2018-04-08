@@ -8,10 +8,12 @@ set(baseic_srcs
     main.cpp
     mainwindow.cpp
     serialportwidget.cpp
+    serialportthread.cpp
     )
 set(moc_files
     mainwindow.h
     serialportwidget.h
+    serialportthread.h
     )
 set(uic_files
     mainwindow.ui
