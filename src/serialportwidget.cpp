@@ -21,6 +21,7 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
         cursor.movePosition(QTextCursor::End);
         ui->receiveTextEdit->setTextCursor(cursor);
     });
+    connect(ui->receiveHexCheckBox, SIGNAL(stateChanged(int)), serialPortThread, SLOT(onReceiveHex(int)));
 
     connect(ui->portsList, SIGNAL(currentIndexChanged(const QString &))
         , serialPortThread, SLOT(deviceChanged(const QString &)));

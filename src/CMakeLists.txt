@@ -6,17 +6,17 @@ set(QT_LIBRARIES Qt5::Widgets Qt5::SerialPort)
 
 set(baseic_srcs
     main.cpp
-    mainwindow.cpp
+    #mainwindow.cpp
     serialportwidget.cpp
     serialportthread.cpp
     )
 set(moc_files
-    mainwindow.h
+    #mainwindow.h
     serialportwidget.h
     serialportthread.h
     )
 set(uic_files
-    mainwindow.ui
+    #mainwindow.ui
     serialportwidget.ui
     )
 set(qrc_files ${RESOURCES_PATH}/serialport.qrc)

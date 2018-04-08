@@ -5,10 +5,10 @@
 #include "serialportthread.h"
 #include <QSerialPort>
 #include <iostream>
-
 SerialPortThread::SerialPortThread()
     : m_serialDevice(nullptr)
       , m_portStatus(PortStatus::closed)
+      , m_receiveHex(false)
 {
 
 }
@@ -83,21 +83,33 @@ void SerialPortThread::onOpen()
 //    //QByteArray arr = m_serialDevice->readAll();
 //    //ui->receiveTextEdit->append(arr);
 //}
+QString SerialPortThread::readBuff(int len)
+{
+    QString buff;
+    while (len) {
+        m_serialDevice->waitForBytesWritten(1);
+        if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead()) {
+            QByteArray c = m_serialDevice->read(1);
+            if (m_receiveHex) {
+                c = c.toHex() + " ";
+            }
+            buff.append(c);
+            len --;
+        }
+    }
+    return buff;
+}
 
 void SerialPortThread::run()
 {
     QString buff;
     while (PortStatus::open == m_portStatus) {
-        char c;
-        m_serialDevice->waitForBytesWritten(1);
-        if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead()) {
-            m_serialDevice->read(&c, 1);
-            if (c != '\r') {
-                buff.append(c);
-                if (buff.length() >= 10 && c == '\n') {
-                    emit showString(QString(buff));
-                    buff.clear();
-                }
+        QString c = readBuff(1);
+        if (c != '\r') {
+            buff.append(c);
+            if (buff.length() >= 10 || c == '\n') {
+                emit showString(buff);
+                buff.clear();
             }
         }
         QThread::msleep(1);
@@ -107,4 +119,10 @@ void SerialPortThread::run()
 void SerialPortThread::deviceChanged(const QString &deviceName)
 {
     m_deviceName = deviceName;
+}
+
+void SerialPortThread::onReceiveHex(int checkState)
+{
+    m_receiveHex = checkState == 2;
+    std::cout << m_receiveHex << std::endl;
 }

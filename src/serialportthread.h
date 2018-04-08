@@ -30,11 +30,16 @@ signals:
 public slots:
     void onOpen();
     void deviceChanged(const QString & deviceName);
+    void onReceiveHex(int checkState);
+
+private:
+    QString readBuff(int len);
 
 private:
     QSerialPort *m_serialDevice;
     PortStatus m_portStatus;
     QString m_deviceName;
+    bool m_receiveHex;
 
 protected:
     void run() override;
