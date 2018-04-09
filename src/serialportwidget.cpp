@@ -36,8 +36,8 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
     ui->receiveTextEdit->setFont(QFont(tr("Consolas"), 11));
     //ui->mapView->setFrameShape (QFrame::Box);
     QGraphicsScene *scene = new QGraphicsScene();
-    scene->setSceneRect(0, 0, 600, 600);
-    int rectSize = 600 / 80;
+    scene->setSceneRect(0, 0, 560, 560);
+    int rectSize = 560 / 80;
     for (int i = 1; i <= 80; i++) {
         for (int j = 1; j <= 80; j++) {
             scene->addRect(QRectF(i * rectSize, j * rectSize, rectSize, rectSize), QPen(QColor(204, 240, 200)),
@@ -93,7 +93,7 @@ void SerialPortWidget::onShowString(const QString &string)
 void SerialPortWidget::onDrawPoseData(int x, int y, int theta, int type)
 {
     QGraphicsRectItem *item = reinterpret_cast<QGraphicsRectItem *>(ui->mapView->scene()->itemAt(y * 7, (79 - x) * 7, QTransform()));
-    QColor *color;
+    QColor *color = nullptr;
     switch (type) {
         case 0:
              color = new QColor(255, 0, 0);
@@ -107,8 +107,11 @@ void SerialPortWidget::onDrawPoseData(int x, int y, int theta, int type)
         case 3:
             color = new QColor(128, 255, 0);
             break;
+        default:
+            color = new QColor(255, 255, 255);
+            break;
     }
     item->setBrush(QBrush(*color));
     //ui->mapView->repaint();
-
+    delete color;
 }
