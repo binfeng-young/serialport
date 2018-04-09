@@ -2,8 +2,8 @@
  * Created by bfyoung on 2018/3/7.
  */
 
-#ifndef UPLOADER_SERIALPORTWIDGET_H
-#define UPLOADER_SERIALPORTWIDGET_H
+#ifndef SERIALPORTWIDGET_H
+#define SERIALPORTWIDGET_H
 
 #include <QtWidgets/QWidget>
 #include <QThread>
@@ -29,8 +29,9 @@ public slots:
     void getSerialPorts();
     void onOpened(bool opened);
     void onShowString(const QString& string);
+    void onDrawPoseData(int x, int y, int theta, int type);
 private:
     Ui::SerialPortWidget* ui;
     SerialPortThread* serialPortThread;
 };
-#endif //UPLOADER_SERIALPORTWIDGET_H
+#endif //SERIALPORTWIDGET_H

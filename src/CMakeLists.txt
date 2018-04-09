@@ -4,6 +4,9 @@ set(CMAKE_PREFIX_PATH "/opt/Qt5.6.1/5.6/gcc_64")
 find_package(Qt5 REQUIRED COMPONENTS Widgets SerialPort)
 set(QT_LIBRARIES Qt5::Widgets Qt5::SerialPort)
 
+include_directories(dataprocessor)
+add_subdirectory(dataprocessor)
+
 set(baseic_srcs
     main.cpp
     #mainwindow.cpp
@@ -32,4 +35,4 @@ set(srcs
     ${qrc_srcs})
 add_executable(${exec_name} ${srcs})
 #set_target_properties(${exec_name}  PROPERTIES ENVIRONMENT "${PROJECT_DEPENDS_PATH}")
-target_link_libraries(${exec_name} ${QT_LIBRARIES})
+target_link_libraries(${exec_name} ${QT_LIBRARIES} dataprocessor)

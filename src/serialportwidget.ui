@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>827</width>
-    <height>563</height>
+    <width>976</width>
+    <height>770</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -25,7 +25,7 @@
   <property name="windowTitle">
    <string>SerialPortWidget</string>
   </property>
-  <layout class="QHBoxLayout" name="horizontalLayout_2">
+  <layout class="QHBoxLayout" name="horizontalLayout_3">
    <item>
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
@@ -60,14 +60,21 @@
       </layout>
      </item>
      <item>
-      <widget class="QTextEdit" name="receiveTextEdit"/>
+      <widget class="QTextEdit" name="receiveTextEdit">
+       <property name="minimumSize">
+        <size>
+         <width>300</width>
+         <height>0</height>
+        </size>
+       </property>
+      </widget>
      </item>
     </layout>
    </item>
    <item>
     <layout class="QVBoxLayout" name="verticalLayout_3">
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
        <item>
         <layout class="QVBoxLayout" name="verticalLayout_2">
          <item>
@@ -115,6 +122,12 @@
          </item>
          <item row="0" column="1">
           <widget class="QToolButton" name="refreshPorts">
+           <property name="maximumSize">
+            <size>
+             <width>100</width>
+             <height>16777215</height>
+            </size>
+           </property>
            <property name="text">
             <string>...</string>
            </property>
@@ -122,6 +135,12 @@
          </item>
          <item row="1" column="0">
           <widget class="QPushButton" name="sendButton">
+           <property name="maximumSize">
+            <size>
+             <width>100</width>
+             <height>16777215</height>
+            </size>
+           </property>
            <property name="text">
             <string>send</string>
            </property>
@@ -129,6 +148,12 @@
          </item>
          <item row="1" column="1">
           <widget class="QPushButton" name="openButton">
+           <property name="maximumSize">
+            <size>
+             <width>100</width>
+             <height>16777215</height>
+            </size>
+           </property>
            <property name="text">
             <string>open</string>
            </property>
@@ -139,27 +164,18 @@
       </layout>
      </item>
      <item>
-      <widget class="QLabel" name="mapLabel">
+      <widget class="QGraphicsView" name="mapView">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
        <property name="minimumSize">
         <size>
-         <width>320</width>
-         <height>320</height>
+         <width>600</width>
+         <height>600</height>
         </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>480</width>
-         <height>480</height>
-        </size>
-       </property>
-       <property name="text">
-        <string>map</string>
        </property>
       </widget>
      </item>

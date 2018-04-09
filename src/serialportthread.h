@@ -6,8 +6,10 @@
 #define SERIALPORT_SERIALPORTTHREAD_H
 
 #include <QThread>
+#include <mutex>
 
 class QSerialPort;
+class Packet;
 
 class SerialPortThread : public QThread {
 Q_OBJECT
@@ -26,6 +28,7 @@ public:
 signals:
     void opened(bool opened);
     void showString(const QString& string);
+    void drawPoseData(int x, int y, int theta, int type);
 
 public slots:
     void onOpen();
@@ -33,13 +36,17 @@ public slots:
     void onReceiveHex(int checkState);
 
 private:
-    QString readBuff(int len);
+    bool readChar(char *c);
+    bool readBuff(void *data, int len);
+    void parseCommand();
 
 private:
     QSerialPort *m_serialDevice;
+    Packet* m_recv_packet;
     PortStatus m_portStatus;
     QString m_deviceName;
     bool m_receiveHex;
+    std::mutex m_serialMutex;
 
 protected:
     void run() override;
