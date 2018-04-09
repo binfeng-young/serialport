@@ -46,7 +46,6 @@ private:
     PortStatus m_portStatus;
     QString m_deviceName;
     bool m_receiveHex;
-    std::mutex m_serialMutex;
 
 protected:
     void run() override;

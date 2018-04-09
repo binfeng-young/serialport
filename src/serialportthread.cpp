@@ -22,6 +22,7 @@ SerialPortThread::~SerialPortThread()
         delete m_recv_packet;
         m_recv_packet = nullptr;
     }
+    close();
 }
 
 void SerialPortThread::open(const QString &deviceName)
@@ -54,13 +55,12 @@ void SerialPortThread::close()
 {
     if (nullptr != m_serialDevice) {
         //disconnect(m_serialDevice, SIGNAL(readyRead()), this, SLOT(onRead()));
-        //m_serialMutex.lock();
+        m_portStatus = PortStatus::closed;
+        wait();
         m_serialDevice->deleteLater();
         m_serialDevice = nullptr;
-        m_portStatus = PortStatus::closed;
         emit opened(false);
         std::cout << "closed" << std::endl;
-        //m_serialMutex.unlock();
     }
 }
 
@@ -94,14 +94,11 @@ void SerialPortThread::onOpen()
 //}
 bool SerialPortThread::readChar(char *c)
 {
-    //m_serialMutex.lock();
     m_serialDevice->waitForBytesWritten(1);
     if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead(1000)) {
         m_serialDevice->read(c, 1);
-        // m_serialMutex.unlock();
         return true;
     } else {
-        //m_serialMutex.unlock();
         return false;
     }
 
@@ -112,6 +109,9 @@ bool SerialPortThread::readBuff(void *data, int len)
     QTime timer;
     timer.start();
     for (int i = 0; i < len;) {
+        if (PortStatus::closed == m_portStatus) {
+            return false;
+        }
         char c;
         if (readChar(&c)) {
             *((char *) data + i) = c;
@@ -130,43 +130,52 @@ void SerialPortThread::run()
     QString buff;
     bool isCmd = false;
     SyncState state = STATE_SYNC1;
-    uint16_t length;
+    uint16_t length = 1;
     uint8_t c[64];
     while (PortStatus::open == m_portStatus) {
+        uint16_t buffLength = length;
         switch (state) {
             case STATE_SYNC1:
-                if (readBuff(c, 1)) {
-                    if (c[0] == SYNC1) {
+                if (readBuff(c, length)) {
+                    if (c[0] == SYNC1 || c[0] == 0xaa) {
                         std::cout << "SYNC1" << std::endl;
                         m_recv_packet->empty();
                         m_recv_packet->setLength(0);
                         m_recv_packet->uByteToBuf(c[0]);
                         state = STATE_SYNC2;
                     }
+                } else {
+                    buffLength = 0;
                 }
                 break;
             case STATE_SYNC2:
                 // 为帧头2时，跳转到状态3，获取数据，否则跳回状态1
-                if (readBuff(c, 1)) {
+                if (readBuff(c, length)) {
                     if (c[0] == SYNC2) {
                         std::cout << "SYNC2" << std::endl;
                         state = STATE_LENGTH;
                         m_recv_packet->uByteToBuf(c[0]);
+                        length = 2;
                     } else {
                         state = STATE_SYNC1;
                     }
+                } else {
+                    buffLength = 0;
                 }
                 break;
             case STATE_LENGTH:
-                if (readBuff(c, 2)) {
+                if (readBuff(c, length)) {
                     length = ((uint16_t) c[0] & 0xff) << 8 | ((uint16_t) c[1] & 0xff);
-                    if (length) {
+                    if (length <= 5) {
                         std::cout << "SYNC_LENGTH" << std::endl;
                         state = STATE_ACQUIRE_DATA;
                         m_recv_packet->uByte2ToBuf(length);
                     } else {
+                        length = 1;
                         state = STATE_SYNC1;
                     }
+                } else {
+                    buffLength = 0;
                 }
                 break;
             case STATE_ACQUIRE_DATA:
@@ -178,26 +187,28 @@ void SerialPortThread::run()
                         parseCommand();
                     }
                     state = STATE_SYNC1;
+                } else {
+                    buffLength = 0;
                 }
+                length = 1;
                 break;
         }
-        if (!isCmd) {
-            buff.append((char *) c);
-            if (buff.length() >= 10 || c[0] == '\n') {
-                if (m_receiveHex) {
-                    buff = buff.toLatin1().toHex();
-                    QString hexBuff;
-                    buff[0];
-                    for (auto byte : buff.toLatin1()) {
-                        hexBuff.append(byte).append(" ");
-                    }
-                    emit showString(hexBuff);
-                } else {
-                    emit showString(buff);
-                }
-                buff.clear();
+        //if (!isCmd) {
+        QString temp;
+        if (m_receiveHex) {
+            for (int i = 0; i < buffLength; i ++) {
+                QByteArray hex = QByteArray((char *)&c[0], 1).toHex();
+                temp.append(hex).append(" ");
             }
+        } else {
+            temp.append(QByteArray((char *)c, buffLength));
         }
+        buff.append(temp);
+        if (buff.length() >= 10 || c[0] == '\n') {
+            emit showString(buff);
+            buff.clear();
+        }
+        // }
         QThread::msleep(1);
     }
 }
