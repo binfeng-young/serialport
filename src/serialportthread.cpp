@@ -137,7 +137,7 @@ void SerialPortThread::run()
         switch (state) {
             case STATE_SYNC1:
                 if (readBuff(c, length)) {
-                    if (c[0] == SYNC1 || c[0] == 0xaa) {
+                    if (c[0] == SYNC1) {
                         std::cout << "SYNC1" << std::endl;
                         m_recv_packet->empty();
                         m_recv_packet->setLength(0);
@@ -166,7 +166,7 @@ void SerialPortThread::run()
             case STATE_LENGTH:
                 if (readBuff(c, length)) {
                     length = ((uint16_t) c[0] & 0xff) << 8 | ((uint16_t) c[1] & 0xff);
-                    if (length <= 5) {
+                    if (length > 5) {
                         std::cout << "SYNC_LENGTH" << std::endl;
                         state = STATE_ACQUIRE_DATA;
                         m_recv_packet->uByte2ToBuf(length);
@@ -224,36 +224,56 @@ void SerialPortThread::onReceiveHex(int checkState)
     std::cout << m_receiveHex << std::endl;
 }
 
-struct MapPoseData {
-    uint16_t id;
-    uint8_t type;
+struct PoseData {
     uint16_t x;
     uint16_t y;
     uint8_t theta;
 };
 
+struct MapPoseData {
+    uint16_t id;
+    uint8_t type;
+    PoseData pose;
+};
+
 struct MapData {
     uint8_t count;
-    MapPoseData poseData[100];
+    MapPoseData mapPoseData[100];
 };
 
 void SerialPortThread::parseCommand()
 {
-    MapData mapData;
+    static PoseData lastPose = {0, 0, 0};
+    static bool first = true;
     switch (m_recv_packet->getID()) {
         case UPLOAD_MAP_PACKET_ID: {
-            mapData.count = m_recv_packet->bufToUByte();
-            for (int i = 0; i < mapData.count; i++) {
-                MapPoseData &poseData = mapData.poseData[i];
-                poseData.id = m_recv_packet->bufToUByte2();
-                poseData.type = m_recv_packet->bufToUByte();
-                poseData.x = m_recv_packet->bufToUByte2();
-                poseData.y = m_recv_packet->bufToUByte2();
-                poseData.theta = m_recv_packet->bufToUByte();
-                emit drawPoseData(poseData.x, poseData.y, poseData.theta, poseData.type);
-                std::cout << poseData.id << " " << (int) poseData.type << " " << poseData.x << " " << poseData.y << " "
-                          << (int) poseData.theta << std::endl;
+            uint8_t count = m_recv_packet->bufToUByte();
+            for (int i = 0; i < count; i++) {
+                uint16_t id = m_recv_packet->bufToUByte2();
+                uint8_t type = m_recv_packet->bufToUByte();
+                uint16_t x = m_recv_packet->bufToUByte2();
+                uint16_t y = m_recv_packet->bufToUByte2();
+                uint8_t theta = m_recv_packet->bufToUByte();
+                emit drawPoseData(x, y, theta, type);
+                std::cout << id << " " << (int) type << " " << x << " " << y << " "
+                          << (int) theta << std::endl;
             }
+            break;
+        }
+        case UPLOAD_CURRENT_POSE_ID: {
+            PoseData currentPose;
+            currentPose.x = m_recv_packet->bufToUByte2();
+            currentPose.y = m_recv_packet->bufToUByte2();
+            currentPose.theta = m_recv_packet->bufToUByte();
+            if (!first) {
+                emit drawPoseData(lastPose.x, lastPose.y, lastPose.theta, 0);
+            }
+            emit drawPoseData(currentPose.x, currentPose.y, currentPose.theta, 2);
+            std::cout << currentPose.x << " " << currentPose.y << " " << (int) currentPose.theta << std::endl;
+            lastPose.x = currentPose.x;
+            lastPose.y = currentPose.y;
+            lastPose.theta = currentPose.theta;
+            first = false;
             break;
         }
         default:

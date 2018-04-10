@@ -89,24 +89,28 @@ void SerialPortWidget::onShowString(const QString &string)
 {
     ui->receiveTextEdit->insertPlainText(string);
 }
-
+enum PoseType {
+    FREE_SPACE,
+    LETHAL_OBSTACLE,
+    CURRENT,
+};
 void SerialPortWidget::onDrawPoseData(int x, int y, int theta, int type)
 {
     QGraphicsRectItem *item = reinterpret_cast<QGraphicsRectItem *>(ui->mapView->scene()->itemAt(y * 7, (79 - x) * 7, QTransform()));
     QColor *color = nullptr;
     switch (type) {
-        case 0:
+        case PoseType::FREE_SPACE:
              color = new QColor(255, 0, 0);
             break;
-        case 1:
+        case PoseType::LETHAL_OBSTACLE:
             color = new QColor(0, 0, 0);
             break;
-        case 2:
+        case PoseType::CURRENT:
             color = new QColor(0, 128, 255);
             break;
-        case 3:
-            color = new QColor(128, 255, 0);
-            break;
+//        case 3:
+//            color = new QColor(128, 255, 0);
+//            break;
         default:
             color = new QColor(255, 255, 255);
             break;
