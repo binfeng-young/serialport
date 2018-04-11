@@ -29,6 +29,7 @@ signals:
     void opened(bool opened);
     void showString(const QString& string);
     void drawPoseData(int x, int y, int theta, int type);
+    void drawPath(int x1, int y1, int x2, int y2);
 
 public slots:
     void onOpen();

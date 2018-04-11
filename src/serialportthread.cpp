@@ -138,7 +138,7 @@ void SerialPortThread::run()
             case STATE_SYNC1:
                 if (readBuff(c, length)) {
                     if (c[0] == SYNC1) {
-                        std::cout << "SYNC1" << std::endl;
+                        //std::cout << "SYNC1" << std::endl;
                         m_recv_packet->empty();
                         m_recv_packet->setLength(0);
                         m_recv_packet->uByteToBuf(c[0]);
@@ -152,7 +152,7 @@ void SerialPortThread::run()
                 // 为帧头2时，跳转到状态3，获取数据，否则跳回状态1
                 if (readBuff(c, length)) {
                     if (c[0] == SYNC2) {
-                        std::cout << "SYNC2" << std::endl;
+                        //std::cout << "SYNC2" << std::endl;
                         state = STATE_LENGTH;
                         m_recv_packet->uByteToBuf(c[0]);
                         length = 2;
@@ -167,7 +167,7 @@ void SerialPortThread::run()
                 if (readBuff(c, length)) {
                     length = ((uint16_t) c[0] & 0xff) << 8 | ((uint16_t) c[1] & 0xff);
                     if (length > 5) {
-                        std::cout << "SYNC_LENGTH" << std::endl;
+                        //std::cout << "SYNC_LENGTH" << std::endl;
                         state = STATE_ACQUIRE_DATA;
                         m_recv_packet->uByte2ToBuf(length);
                     } else {
@@ -182,7 +182,7 @@ void SerialPortThread::run()
                 if (readBuff(c, length)) {
                     m_recv_packet->dataToBuf(c, length);
                     if (m_recv_packet->verifyCheckSum()) {
-                        std::cout << "STATE_ACQUIRE_DATA" << std::endl;
+                        //std::cout << "STATE_ACQUIRE_DATA" << std::endl;
                         m_recv_packet->resetRead();
                         parseCommand();
                     }
@@ -229,6 +229,9 @@ struct PoseData {
     uint16_t y;
     uint8_t theta;
 };
+bool equalsP(const PoseData& p, const PoseData& q) {
+    return p.x == q.x && p.y ==  q.y;
+}
 
 struct MapPoseData {
     uint16_t id;
@@ -265,14 +268,19 @@ void SerialPortThread::parseCommand()
             currentPose.x = m_recv_packet->bufToUByte2();
             currentPose.y = m_recv_packet->bufToUByte2();
             currentPose.theta = m_recv_packet->bufToUByte();
-            if (!first) {
-                emit drawPoseData(lastPose.x, lastPose.y, lastPose.theta, 0);
+            if (!equalsP(lastPose, currentPose)) {
+                if (!first) {
+                    emit drawPoseData(lastPose.x, lastPose.y, lastPose.theta, 0);
+                }
+                lastPose.x = currentPose.x;
+                lastPose.y = currentPose.y;
+                lastPose.theta = currentPose.theta;
+                emit drawPath(lastPose.x, lastPose.y, currentPose.x, currentPose.y);
             }
+
             emit drawPoseData(currentPose.x, currentPose.y, currentPose.theta, 2);
             std::cout << currentPose.x << " " << currentPose.y << " " << (int) currentPose.theta << std::endl;
-            lastPose.x = currentPose.x;
-            lastPose.y = currentPose.y;
-            lastPose.theta = currentPose.theta;
+
             first = false;
             break;
         }

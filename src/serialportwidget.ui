@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>930</width>
-    <height>701</height>
+    <height>706</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -110,13 +110,16 @@
        </item>
        <item>
         <layout class="QGridLayout" name="gridLayout">
-         <item row="0" column="0">
-          <widget class="QComboBox" name="portsList">
+         <item row="1" column="1">
+          <widget class="QPushButton" name="openButton">
            <property name="maximumSize">
             <size>
              <width>100</width>
              <height>16777215</height>
             </size>
+           </property>
+           <property name="text">
+            <string>open</string>
            </property>
           </widget>
          </item>
@@ -146,16 +149,20 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <widget class="QPushButton" name="openButton">
+         <item row="0" column="0">
+          <widget class="QComboBox" name="portsList">
            <property name="maximumSize">
             <size>
              <width>100</width>
              <height>16777215</height>
             </size>
            </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QPushButton" name="cleanMapButton">
            <property name="text">
-            <string>open</string>
+            <string>cleanMap</string>
            </property>
           </widget>
          </item>
