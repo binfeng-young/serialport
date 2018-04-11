@@ -7,8 +7,8 @@
 
 #include <QThread>
 #include <mutex>
+#include <QSerialPort>
 
-class QSerialPort;
 class Packet;
 
 class SerialPortThread : public QThread {
@@ -35,6 +35,7 @@ public slots:
     void onOpen();
     void deviceChanged(const QString & deviceName);
     void onReceiveHex(int checkState);
+    void handleSerialError(QSerialPort::SerialPortError error);
 
 private:
     bool readChar(char *c);

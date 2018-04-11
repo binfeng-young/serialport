@@ -95,7 +95,7 @@ enum PoseType {
 void SerialPortWidget::onDrawPoseData(int x, int y, int theta, int type)
 {
     QGraphicsRectItem *item = reinterpret_cast<QGraphicsRectItem *>(
-        ui->mapView->scene()->itemAt(y * m_gridSize.width(), (79 - x) * m_gridSize.height(), QTransform()));
+        ui->mapView->scene()->itemAt((79 - y) * m_gridSize.width(), (79 - x) * m_gridSize.height(), QTransform()));
     QColor *color = nullptr;
     switch (type) {
         case PoseType::FREE_SPACE:
@@ -122,7 +122,7 @@ void SerialPortWidget::onDrawPoseData(int x, int y, int theta, int type)
 void SerialPortWidget::onDrawPath(int x1, int y1, int x2, int y2)
 {
     QGraphicsScene *scene = ui->mapView->scene();
-    scene->addLine(y1 * m_gridSize.width(), (79 - x1) * m_gridSize.height(), y2 * m_gridSize.width(),
+    scene->addLine((79 -y1) * m_gridSize.width(), (79 - x1) * m_gridSize.height(), (79 - y2) * m_gridSize.width(),
                    (79 - x2) * m_gridSize.height(), QPen(QColor(128, 255, 0)));
 }
 

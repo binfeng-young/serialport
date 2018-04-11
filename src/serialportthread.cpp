@@ -14,6 +14,7 @@ SerialPortThread::SerialPortThread()
       , m_receiveHex(false)
 {
     m_recv_packet = new Packet(64, 5, 2);
+    qRegisterMetaType<QSerialPort::SerialPortError>("QSerialPort::SerialPortError");
 }
 
 SerialPortThread::~SerialPortThread()
@@ -42,7 +43,8 @@ void SerialPortThread::open(const QString &deviceName)
         emit opened(true);
         m_serialDevice->clear();
         start();
-        // connect(m_serialDevice, SIGNAL(readyRead()), this, SLOT(onRead()));
+        connect(m_serialDevice, static_cast<void (QSerialPort::*)(QSerialPort::SerialPortError)>(&QSerialPort::error),
+                this, &SerialPortThread::handleSerialError);
         std::cout << "open" << std::endl;
     } else {
         emit opened(false);
@@ -95,7 +97,7 @@ void SerialPortThread::onOpen()
 bool SerialPortThread::readChar(char *c)
 {
     m_serialDevice->waitForBytesWritten(1);
-    if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead(1000)) {
+    if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead(100)) {
         m_serialDevice->read(c, 1);
         return true;
     } else {
@@ -117,7 +119,7 @@ bool SerialPortThread::readBuff(void *data, int len)
             *((char *) data + i) = c;
             timer.start();
             i++;
-        } else if (timer.elapsed() > 10000) {
+        } else if (timer.elapsed() > 1000) {
             std::cout << "time out" << std::endl;
             return false;
         }
@@ -271,20 +273,26 @@ void SerialPortThread::parseCommand()
             if (!equalsP(lastPose, currentPose)) {
                 if (!first) {
                     emit drawPoseData(lastPose.x, lastPose.y, lastPose.theta, 0);
+                    //emit drawPath(lastPose.x, lastPose.y, currentPose.x, currentPose.y);
+                } else {
+                    first = false;
                 }
                 lastPose.x = currentPose.x;
                 lastPose.y = currentPose.y;
                 lastPose.theta = currentPose.theta;
-                emit drawPath(lastPose.x, lastPose.y, currentPose.x, currentPose.y);
+                std::cout << currentPose.x << " " << currentPose.y << " " << (int) currentPose.theta << std::endl;
             }
-
             emit drawPoseData(currentPose.x, currentPose.y, currentPose.theta, 2);
-            std::cout << currentPose.x << " " << currentPose.y << " " << (int) currentPose.theta << std::endl;
-
-            first = false;
             break;
         }
         default:
             break;
+    }
+}
+
+void SerialPortThread::handleSerialError(QSerialPort::SerialPortError error)
+{
+    if (error == QSerialPort::ResourceError) {
+        close();
     }
 }
