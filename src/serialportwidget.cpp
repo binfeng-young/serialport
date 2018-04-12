@@ -35,7 +35,7 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
     connect(serialPortThread, SIGNAL(opened(bool)), this, SLOT(onOpened(bool)));
     connect(serialPortThread, SIGNAL(showString(const QString&)), this, SLOT(onShowString(const QString&)));
     connect(serialPortThread, SIGNAL(drawPoseData(int, int, int, int)), this, SLOT(onDrawPoseData(int, int, int, int)));
-    connect(serialPortThread, SIGNAL(drawPath(int, int, int, int)), this, SLOT(onDrawPath(int, int, int, int)));
+    connect(serialPortThread, SIGNAL(drawPath(int, int, int, int, int)), this, SLOT(onDrawPath(int, int, int, int, int)));
     //connect(ui->sendButton, SIGNAL(clicked()), this, SLOT(onSend()));
     getSerialPorts();
     ui->sendButton->setDisabled(true);
@@ -110,23 +110,23 @@ void SerialPortWidget::onDrawPoseData(int x, int y, int theta, int type)
         }
     }
     if (nullptr != itemRect) {
-        std::cout << itemRect->rect().x() << " " << itemRect->rect().y() << std::endl;
-        QColor color = QColor(255, 255, 255);
+        QColor color(255, 255, 255);
         switch (type) {
             case PoseType::FREE_SPACE:
-                color = QColor(255, 0, 0);
+                //color.setRgb(0xFF6A6A);
+                color.setRgb(0xFF0000);
                 break;
             case PoseType::LETHAL_OBSTACLE:
-                color = QColor(0, 0, 0);
+                color.setRgb(0, 0, 0);
                 break;
             case PoseType::CURRENT:
-                color = QColor(0, 128, 255);
+                color.setRgb(0, 128, 255);
                 break;
 //        case 3:
 //            color = new QColor(128, 255, 0);
 //            break;
             default:
-                color = QColor(255, 255, 255);
+                color.setRgb(255, 255, 255);
                 break;
         }
         itemRect->setBrush(QBrush(color));
@@ -135,12 +135,16 @@ void SerialPortWidget::onDrawPoseData(int x, int y, int theta, int type)
 //    std::cout << "pose done " << std::endl;
 }
 
-void SerialPortWidget::onDrawPath(int x1, int y1, int x2, int y2)
+void SerialPortWidget::onDrawPath(int x1, int y1, int x2, int y2, int type)
 {
+    QColor color(255, 255, 255);
+    if (type) {
+        color.setRgb(0x0000EE);
+    }
     QGraphicsScene *scene = ui->mapView->scene();
     //std::cout << " lene :" << x1 << " "<< y1 << " " << x2 << " " << y2 << std::endl;
     scene->addLine((79 - y1) * m_cellSize.width() + 4, (79 - x1) * m_cellSize.height() + 4, (79 - y2) * m_cellSize.width() +4,
-                   (79 - x2) * m_cellSize.height() + 4, QPen(QColor(255,255, 255)));
+                   (79 - x2) * m_cellSize.height() + 4, QPen(color));
    // std::cout << "line done " << std::endl;
 }
 
@@ -151,7 +155,7 @@ void SerialPortWidget::drawGridMap()
         for (int j = 0; j < 80; j++) {
             scene->addRect(
                 QRectF(i * m_cellSize.width(), j * m_cellSize.height(), m_cellSize.width(), m_cellSize.height()),
-                QPen(QColor(204, 240, 200)),
+                QPen(QColor(255, 255, 255)),//QPen(QColor(204, 240, 200)),
                 QBrush(QColor(255, 255, 255)));
         }
     }

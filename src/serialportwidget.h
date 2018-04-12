@@ -31,7 +31,7 @@ public slots:
     void onOpened(bool opened);
     void onShowString(const QString& string);
     void onDrawPoseData(int x, int y, int theta, int type);
-    void onDrawPath(int x1, int y1, int x2, int y2);
+    void onDrawPath(int x1, int y1, int x2, int y2, int type);
 private:
     Ui::SerialPortWidget* ui;
     SerialPortThread* serialPortThread;

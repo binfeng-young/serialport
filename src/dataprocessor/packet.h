@@ -21,6 +21,8 @@
 #define UPLOAD_MAP_PACKET_ID            0X02
 #define UPLOAD_WIFI_CONTROL_PACKET_ID   0x03
 #define UPLOAD_CURRENT_POSE_ID          0x04
+#define UPLOAD_NAV_PATH_ID              0x05
+
 
 enum SyncState {
     STATE_SYNC1,

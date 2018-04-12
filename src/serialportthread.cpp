@@ -278,7 +278,7 @@ void SerialPortThread::parseCommand()
             if (!equalsP(lastPose, currentPose)) {
                 if (!first) {
                     emit drawPoseData(lastPose.x, lastPose.y, lastPose.theta, 0);
-                    emit drawPath(lastPose.x, lastPose.y, currentPose.x, currentPose.y);
+                    emit drawPath(lastPose.x, lastPose.y, currentPose.x, currentPose.y, 0);
                 } else {
                     first = false;
                 }
@@ -288,6 +288,21 @@ void SerialPortThread::parseCommand()
             }
             emit drawPoseData(currentPose.x, currentPose.y, currentPose.theta, 2);
             break;
+        }
+        case UPLOAD_NAV_PATH_ID : {
+            std::cout << "get path ***********" << std::endl;
+            PoseData prePose;
+            uint8_t count = m_recv_packet->bufToUByte();
+            prePose.x = m_recv_packet->bufToUByte2();
+            prePose.y = m_recv_packet->bufToUByte2();
+            for (int i = 1; i < count; i++) {
+                PoseData currentPose;
+                currentPose.x = m_recv_packet->bufToUByte2();
+                currentPose.y = m_recv_packet->bufToUByte2();
+                emit drawPath(prePose.x, prePose.y, currentPose.x, currentPose.y, 1);
+                prePose.x = currentPose.x;
+                prePose.y = currentPose.y;
+            }
         }
         default:
             break;
