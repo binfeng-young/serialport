@@ -36,7 +36,7 @@ private:
     Ui::SerialPortWidget* ui;
     SerialPortThread* serialPortThread;
     QSize m_sceneSize;
-    QSize m_gridSize;
+    QSize m_cellSize;
 
 };
 #endif //SERIALPORTWIDGET_H

@@ -20,6 +20,7 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
     connect(ui->refreshPorts, SIGNAL(clicked()), this, SLOT(getSerialPorts()));
     connect(ui->cleanMapButton, &QPushButton::clicked, [&](){
         ui->mapView->scene()->clear();
+        serialPortThread->reSetMap();
         drawGridMap();
     });
     connect(ui->receiveTextEdit, &QTextEdit::textChanged, [&]() {
@@ -41,7 +42,7 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
     ui->receiveTextEdit->setFont(QFont(tr("Consolas"), 11));
     //ui->mapView->setFrameShape (QFrame::Box);
     m_sceneSize = QSize(560, 560);
-    m_gridSize = m_sceneSize / 80;
+    m_cellSize = m_sceneSize / 80;
     QGraphicsScene *scene = new QGraphicsScene();
     scene->setSceneRect(0, 0, m_sceneSize.width(), m_sceneSize.height());
     ui->mapView->setScene(scene);
@@ -56,7 +57,6 @@ SerialPortWidget::~SerialPortWidget()
 void SerialPortWidget::getSerialPorts()
 {
     serialPortThread->close();
-    // Populate the telemetry combo box:
     ui->portsList->clear();
 
     QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
@@ -65,8 +65,10 @@ void SerialPortWidget::getSerialPorts()
     qSort(ports.begin(), ports.end(), [](const QSerialPortInfo &s1, const QSerialPortInfo &s2) {
         return s1.portName() < s2.portName();
     });
-    foreach(QSerialPortInfo port, ports) {
-        ui->portsList->addItem(port.portName());
+    for (const auto &port: ports) {
+        if (ui->portsList->findText(port.portName()) == -1){
+            ui->portsList->addItem(port.portName());
+        }
     }
 
 }
@@ -94,45 +96,61 @@ enum PoseType {
 };
 void SerialPortWidget::onDrawPoseData(int x, int y, int theta, int type)
 {
-    QGraphicsRectItem *item = reinterpret_cast<QGraphicsRectItem *>(
-        ui->mapView->scene()->itemAt((79 - y) * m_gridSize.width(), (79 - x) * m_gridSize.height(), QTransform()));
-    QColor *color = nullptr;
-    switch (type) {
-        case PoseType::FREE_SPACE:
-            color = new QColor(255, 0, 0);
+//    QGraphicsItem *item = ui->mapView->scene()->itemAt(
+//        (79 - y) * m_cellSize.width() + 1, (79 - x) * m_cellSize.height() + 1, QTransform());
+    QGraphicsRectItem *itemRect = nullptr; //dynamic_cast<QGraphicsRectItem *> (item);
+    auto items = ui->mapView->scene()->items(
+        QRectF((79 - y) * m_cellSize.width() - 2, (79 - x) * m_cellSize.height() - 2, m_cellSize.width() - 2,
+               m_cellSize.height() - 2));
+//    std::cout <<"pose " <<(79 - y) * m_cellSize.width() + 2 << " " << (79 - x) * m_cellSize.height() + 2 << " " << items.size() <<  std::endl;
+    for (auto item : items) {
+        if (typeid(QGraphicsRectItem) == typeid(*item)) {
+            itemRect = dynamic_cast<QGraphicsRectItem *> (item);
             break;
-        case PoseType::LETHAL_OBSTACLE:
-            color = new QColor(0, 0, 0);
-            break;
-        case PoseType::CURRENT:
-            color = new QColor(0, 128, 255);
-            break;
+        }
+    }
+    if (nullptr != itemRect) {
+        std::cout << itemRect->rect().x() << " " << itemRect->rect().y() << std::endl;
+        QColor color = QColor(255, 255, 255);
+        switch (type) {
+            case PoseType::FREE_SPACE:
+                color = QColor(255, 0, 0);
+                break;
+            case PoseType::LETHAL_OBSTACLE:
+                color = QColor(0, 0, 0);
+                break;
+            case PoseType::CURRENT:
+                color = QColor(0, 128, 255);
+                break;
 //        case 3:
 //            color = new QColor(128, 255, 0);
 //            break;
-        default:
-            color = new QColor(255, 255, 255);
-            break;
+            default:
+                color = QColor(255, 255, 255);
+                break;
+        }
+        itemRect->setBrush(QBrush(color));
     }
-    item->setBrush(QBrush(*color));
     //ui->mapView->repaint();
-    delete color;
+//    std::cout << "pose done " << std::endl;
 }
 
 void SerialPortWidget::onDrawPath(int x1, int y1, int x2, int y2)
 {
     QGraphicsScene *scene = ui->mapView->scene();
-    scene->addLine((79 -y1) * m_gridSize.width(), (79 - x1) * m_gridSize.height(), (79 - y2) * m_gridSize.width(),
-                   (79 - x2) * m_gridSize.height(), QPen(QColor(128, 255, 0)));
+    //std::cout << " lene :" << x1 << " "<< y1 << " " << x2 << " " << y2 << std::endl;
+    scene->addLine((79 - y1) * m_cellSize.width() + 4, (79 - x1) * m_cellSize.height() + 4, (79 - y2) * m_cellSize.width() +4,
+                   (79 - x2) * m_cellSize.height() + 4, QPen(QColor(255,255, 255)));
+   // std::cout << "line done " << std::endl;
 }
 
 void SerialPortWidget::drawGridMap()
 {
     QGraphicsScene *scene = ui->mapView->scene();
-    for (int i = 1; i <= 80; i++) {
-        for (int j = 1; j <= 80; j++) {
+    for (int i = 0; i < 80; i++) {
+        for (int j = 0; j < 80; j++) {
             scene->addRect(
-                QRectF(i * m_gridSize.width(), j * m_gridSize.height(), m_gridSize.width(), m_gridSize.height()),
+                QRectF(i * m_cellSize.width(), j * m_cellSize.height(), m_cellSize.width(), m_cellSize.height()),
                 QPen(QColor(204, 240, 200)),
                 QBrush(QColor(255, 255, 255)));
         }

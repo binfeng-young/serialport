@@ -15,6 +15,7 @@ SerialPortThread::SerialPortThread()
 {
     m_recv_packet = new Packet(64, 5, 2);
     qRegisterMetaType<QSerialPort::SerialPortError>("QSerialPort::SerialPortError");
+    reSetMap();
 }
 
 SerialPortThread::~SerialPortThread()
@@ -97,7 +98,7 @@ void SerialPortThread::onOpen()
 bool SerialPortThread::readChar(char *c)
 {
     m_serialDevice->waitForBytesWritten(1);
-    if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead(100)) {
+    if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead(1000)) {
         m_serialDevice->read(c, 1);
         return true;
     } else {
@@ -119,7 +120,7 @@ bool SerialPortThread::readBuff(void *data, int len)
             *((char *) data + i) = c;
             timer.start();
             i++;
-        } else if (timer.elapsed() > 1000) {
+        } else if (timer.elapsed() > 3000) {
             std::cout << "time out" << std::endl;
             return false;
         }
@@ -245,11 +246,15 @@ struct MapData {
     uint8_t count;
     MapPoseData mapPoseData[100];
 };
-
+static PoseData lastPose = {0, 0, 0};
+static bool first = true;
+void SerialPortThread::reSetMap()
+{
+    lastPose = {0, 0, 0};
+    first = true;
+}
 void SerialPortThread::parseCommand()
 {
-    static PoseData lastPose = {0, 0, 0};
-    static bool first = true;
     switch (m_recv_packet->getID()) {
         case UPLOAD_MAP_PACKET_ID: {
             uint8_t count = m_recv_packet->bufToUByte();
@@ -273,14 +278,13 @@ void SerialPortThread::parseCommand()
             if (!equalsP(lastPose, currentPose)) {
                 if (!first) {
                     emit drawPoseData(lastPose.x, lastPose.y, lastPose.theta, 0);
-                    //emit drawPath(lastPose.x, lastPose.y, currentPose.x, currentPose.y);
+                    emit drawPath(lastPose.x, lastPose.y, currentPose.x, currentPose.y);
                 } else {
                     first = false;
                 }
                 lastPose.x = currentPose.x;
                 lastPose.y = currentPose.y;
                 lastPose.theta = currentPose.theta;
-                std::cout << currentPose.x << " " << currentPose.y << " " << (int) currentPose.theta << std::endl;
             }
             emit drawPoseData(currentPose.x, currentPose.y, currentPose.theta, 2);
             break;

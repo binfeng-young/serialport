@@ -25,6 +25,7 @@ public:
 
     void close();
 
+    void reSetMap();
 signals:
     void opened(bool opened);
     void showString(const QString& string);
