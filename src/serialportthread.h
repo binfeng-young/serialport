@@ -37,6 +37,7 @@ public slots:
     void deviceChanged(const QString & deviceName);
     void onReceiveHex(int checkState);
     void handleSerialError(QSerialPort::SerialPortError error);
+//    void onRead();
 
 private:
     bool readChar(char *c);
@@ -49,6 +50,7 @@ private:
     PortStatus m_portStatus;
     QString m_deviceName;
     bool m_receiveHex;
+    QMutex m_serialMutex;
 
 protected:
     void run() override;

@@ -8,6 +8,9 @@
 #include <QSerialPortInfo>
 #include <iostream>
 #include <QGraphicsRectItem>
+#include <queue>
+#include <cmath>
+#include <QTime>
 
 SerialPortWidget::SerialPortWidget(QWidget *parent)
     :
@@ -47,6 +50,34 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
     scene->setSceneRect(0, 0, m_sceneSize.width(), m_sceneSize.height());
     ui->mapView->setScene(scene);
     drawGridMap();
+/*    static int direction[4][2] = {0, 1, 1, 0, -1, 0, 0, -1};
+    auto isOutMap = [](int x, int y, unsigned short int size_x, unsigned short int size_y)->bool {
+        return x < 0 || y < 0 || x >= size_x || y >= size_y;
+    };
+    auto nhood4 = [&](unsigned short int idx, unsigned short int size_x, unsigned short int size_y)
+    {
+        //get 4-connected neighbourhood indexes, check for edge of map
+        std::vector<unsigned short int> out;
+        out.reserve(8);
+        int my = idx / size_x;
+        int mx = idx % size_x;
+        for (auto &i : direction) {
+            int y = my + i[0];
+            int x = mx + i[1];
+            if (!isOutMap(x, y, size_x, size_y)) {
+                out.push_back(y * size_x + x);
+            }
+        }
+        return out;
+    };
+    auto n4 = nhood4(79 * 80 + 79, 80, 80);
+    for (auto n : n4) {
+        std::cout << n % 80 << "," << n/80 << std::endl;
+    }*/
+/*    QTime timer;
+    timer.start();
+    uint8_t *c = new uint8_t[6400]();
+    std::cout << timer.elapsed() << std::endl;*/
 }
 
 SerialPortWidget::~SerialPortWidget()
@@ -122,14 +153,15 @@ void SerialPortWidget::onDrawPoseData(int x, int y, int theta, int type)
             case PoseType::CURRENT:
                 color.setRgb(0, 128, 255);
                 break;
-//        case 3:
-//            color = new QColor(128, 255, 0);
-//            break;
+//            case 3:
+//                color.setRgb(0x8E8E8E);
+                break;
             default:
                 color.setRgb(255, 255, 255);
                 break;
         }
         itemRect->setBrush(QBrush(color));
+        itemRect->setPen(QPen(color));
     }
     //ui->mapView->repaint();
 //    std::cout << "pose done " << std::endl;
@@ -155,7 +187,8 @@ void SerialPortWidget::drawGridMap()
         for (int j = 0; j < 80; j++) {
             scene->addRect(
                 QRectF(i * m_cellSize.width(), j * m_cellSize.height(), m_cellSize.width(), m_cellSize.height()),
-                QPen(QColor(255, 255, 255)),//QPen(QColor(204, 240, 200)),
+                QPen(QColor(255, 255, 255)),
+                //QPen(QColor(204, 240, 200)),
                 QBrush(QColor(255, 255, 255)));
         }
     }

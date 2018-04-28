@@ -98,10 +98,11 @@ void SerialPortThread::onOpen()
 bool SerialPortThread::readChar(char *c)
 {
     m_serialDevice->waitForBytesWritten(1);
-    if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead(1000)) {
+    if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead(10)) {
         m_serialDevice->read(c, 1);
         return true;
     } else {
+        msleep(100);
         return false;
     }
 
@@ -150,6 +151,23 @@ void SerialPortThread::run()
                 } else {
                     buffLength = 0;
                 }
+                if (c[0] == 0xaa) buff.append("\n");
+                if (state == STATE_SYNC1 && c[0] != SYNC1) {
+                    QString temp;
+                    if (m_receiveHex) {
+                        for (int i = 0; i < buffLength; i++) {
+                            QByteArray hex = QByteArray((char *) &c[0], 1).toHex();
+                            temp.append(hex).append(" ");
+                        }
+                    } else {
+                        temp.append(QByteArray((char *) c, buffLength));
+                    }
+                    buff.append(temp);
+                    if (buff.length() >= 10 || c[0] == '\n') {
+                        emit showString(buff);
+                        buff.clear();
+                    }
+                }
                 break;
             case STATE_SYNC2:
                 // 为帧头2时，跳转到状态3，获取数据，否则跳回状态1
@@ -196,22 +214,7 @@ void SerialPortThread::run()
                 length = 1;
                 break;
         }
-        //if (!isCmd) {
-        QString temp;
-        if (m_receiveHex) {
-            for (int i = 0; i < buffLength; i ++) {
-                QByteArray hex = QByteArray((char *)&c[0], 1).toHex();
-                temp.append(hex).append(" ");
-            }
-        } else {
-            temp.append(QByteArray((char *)c, buffLength));
-        }
-        buff.append(temp);
-        if (buff.length() >= 10 || c[0] == '\n') {
-            emit showString(buff);
-            buff.clear();
-        }
-        // }
+
         QThread::msleep(1);
     }
 }
@@ -311,7 +314,9 @@ void SerialPortThread::parseCommand()
 
 void SerialPortThread::handleSerialError(QSerialPort::SerialPortError error)
 {
-    if (error == QSerialPort::ResourceError) {
+
+    if (error != QSerialPort::ReadError && error != QSerialPort::TimeoutError) {
+        std::cout << error << std::endl;
         close();
     }
 }
