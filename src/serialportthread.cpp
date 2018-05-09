@@ -13,16 +13,18 @@ SerialPortThread::SerialPortThread()
       , m_portStatus(PortStatus::closed)
       , m_receiveHex(false)
 {
-    m_recv_packet = new Packet(64, 5, 2);
+    m_recvPacket = new Packet(64, 5, 2);
+    m_sendBuf = new char[64]();
+    m_sendPending = false;
     qRegisterMetaType<QSerialPort::SerialPortError>("QSerialPort::SerialPortError");
     reSetMap();
 }
 
 SerialPortThread::~SerialPortThread()
 {
-    if (nullptr != m_recv_packet) {
-        delete m_recv_packet;
-        m_recv_packet = nullptr;
+    if (nullptr != m_recvPacket) {
+        delete m_recvPacket;
+        m_recvPacket = nullptr;
     }
     close();
 }
@@ -46,6 +48,7 @@ void SerialPortThread::open(const QString &deviceName)
         start();
         connect(m_serialDevice, static_cast<void (QSerialPort::*)(QSerialPort::SerialPortError)>(&QSerialPort::error),
                 this, &SerialPortThread::handleSerialError);
+        m_serialDevice->moveToThread(this);
         std::cout << "open" << std::endl;
     } else {
         emit opened(false);
@@ -60,7 +63,7 @@ void SerialPortThread::close()
         //disconnect(m_serialDevice, SIGNAL(readyRead()), this, SLOT(onRead()));
         m_portStatus = PortStatus::closed;
         wait();
-        m_serialDevice->deleteLater();
+        delete m_serialDevice;
         m_serialDevice = nullptr;
         emit opened(false);
         std::cout << "closed" << std::endl;
@@ -81,25 +84,49 @@ void SerialPortThread::onOpen()
     }
 }
 
-//void SerialPortThread::onSend()
-//{
-//    uint8_t toBLCmd[] = {0xb5, 0x62, 0x00, 0x03, 0x4c, 0x00, 0x4c};
-//    if (m_serialDevice->write(reinterpret_cast<char *>(toBLCmd), 7) <= 0) {
-//        std::cout << "Could not write serial" << std::endl;
-//        return;
-//    }
-//}
-//
+bool SerialPortThread::writChar(char &c)
+{
+    m_serialDevice->write(&c, 1);
+    m_serialDevice->waitForBytesWritten(1);
+    return true;
+}
+
+bool SerialPortThread::send()
+{
+    for (int i = 0; i < m_sendLen; i++) {
+        writChar(m_sendBuf[i]);
+    }
+    std::cout << "send" << std::endl;
+    return true;
+}
+void SerialPortThread::sendBuff(void *data, int len)
+{
+    sendbufmutex.lock();
+
+    m_sendPending = true;
+    m_sendLen = len;
+    memcpy(m_sendBuf, data, len);
+    //sendbufmutex.unlock();
+}
+
+void SerialPortThread::onSend()
+{
+    uint8_t toFold[] = {0xaa, 0x55, 0xa5, 0xc3, 0x34, 0, 0, 0, 0, 0x9b};
+    sendBuff(toFold, 10);
+    uint8_t virtualWall[] = {0xaa, 0x55, 0xa3, 0x27, 0x10, 0, 0, 0x27, 0x10, 0, 0, 0xf0, 0xd8, 0xff, 0xff, 0xf0, 0xd8, 0xff, 0xff, 02, 01, 0,0,0, 0x9f};
+    sendBuff(virtualWall, 25);
+}
+
 //void SerialPortThread::onRead()
 //{
 //    //QByteArray arr = m_serialDevice->readAll();
 //    //ui->receiveTextEdit->append(arr);
 //}
-bool SerialPortThread::readChar(char *c)
+bool SerialPortThread::readChar(char& c)
 {
     m_serialDevice->waitForBytesWritten(1);
-    if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead(10)) {
-        m_serialDevice->read(c, 1);
+    if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead(1)) {
+        m_serialDevice->read(&c, 1);
         return true;
     } else {
         msleep(100);
@@ -117,104 +144,134 @@ bool SerialPortThread::readBuff(void *data, int len)
             return false;
         }
         char c;
-        if (readChar(&c)) {
+        if (readChar(c)) {
             *((char *) data + i) = c;
             timer.start();
             i++;
-        } else if (timer.elapsed() > 3000) {
-            std::cout << "time out" << std::endl;
+        } else if (timer.elapsed() > 2000) {
             return false;
         }
     }
     return true;
 }
 
-void SerialPortThread::run()
+SPStatus SerialPortThread::receivePacket(uint8_t *c, uint16_t &length)
 {
-    QString buff;
-    bool isCmd = false;
-    SyncState state = STATE_SYNC1;
+    SPStatus spStatus = SPStatus::RX_RECEIVING;
+    static SyncState state = STATE_SYNC1;
+    switch (state) {
+        case STATE_SYNC1: {
+            //m_recvPacket->empty();
+            m_recvPacket->setLength(0);
+            m_recvPacket->uByteToBuf(c[0]);
+            if (c[0] != SYNC1) {
+                return SPStatus::RX_SYNCFAIL;
+            }
+            //std::cout << "SYNC1" << std::endl;
+            state = STATE_SYNC2;
+            break;
+        }
+        case STATE_SYNC2: {
+            // 为帧头2时，跳转到状态3，获取数据，否则跳回状态1
+            m_recvPacket->uByteToBuf(c[0]);
+            if (c[0] != SYNC2) {
+                state = STATE_SYNC1;
+                return SPStatus::RX_SYNCFAIL;
+            }
+            //std::cout << "SYNC2" << std::endl;
+            state = STATE_LENGTH;
+            length = 2;
+            break;
+        }
+        case STATE_LENGTH:
+            length = ((uint16_t) c[0] & 0xff) << 8 | ((uint16_t) c[1] & 0xff);
+            m_recvPacket->uByte2ToBuf(length);
+            if (length > 5) {
+                //std::cout << "SYNC_LENGTH" << std::endl;
+                state = STATE_ACQUIRE_DATA;
+            } else {
+                length = 1;
+                state = STATE_SYNC1;
+                return SPStatus::RX_SYNCFAIL;
+            }
+            break;
+        case STATE_ACQUIRE_DATA:
+            m_recvPacket->dataToBuf(c, length);
+            if (m_recvPacket->verifyCheckSum()) {
+                //std::cout << "STATE_ACQUIRE_DATA" << std::endl;
+                m_recvPacket->resetRead();
+                parseCommand();
+                spStatus =  SPStatus::RX_COMPLETE;
+            } else {
+                spStatus = SPStatus::RX_SYNCFAIL;
+            }
+            state = STATE_SYNC1;
+            length = 1;
+    }
+    return spStatus;
+}
+
+
+SPStatus SerialPortThread::receiveProcess()
+{
+    SPStatus spStatus = SPStatus::RX_IDLE;
     uint16_t length = 1;
     uint8_t c[64];
-    while (PortStatus::open == m_portStatus) {
-        uint16_t buffLength = length;
-        switch (state) {
-            case STATE_SYNC1:
-                if (readBuff(c, length)) {
-                    if (c[0] == SYNC1) {
-                        //std::cout << "SYNC1" << std::endl;
-                        m_recv_packet->empty();
-                        m_recv_packet->setLength(0);
-                        m_recv_packet->uByteToBuf(c[0]);
-                        state = STATE_SYNC2;
-                    }
-                } else {
-                    buffLength = 0;
-                }
-                if (c[0] == 0xaa) buff.append("\n");
-                if (state == STATE_SYNC1 && c[0] != SYNC1) {
-                    QString temp;
-                    if (m_receiveHex) {
-                        for (int i = 0; i < buffLength; i++) {
-                            QByteArray hex = QByteArray((char *) &c[0], 1).toHex();
-                            temp.append(hex).append(" ");
-                        }
-                    } else {
-                        temp.append(QByteArray((char *) c, buffLength));
-                    }
-                    buff.append(temp);
-                    if (buff.length() >= 10 || c[0] == '\n') {
-                        emit showString(buff);
-                        buff.clear();
-                    }
-                }
-                break;
-            case STATE_SYNC2:
-                // 为帧头2时，跳转到状态3，获取数据，否则跳回状态1
-                if (readBuff(c, length)) {
-                    if (c[0] == SYNC2) {
-                        //std::cout << "SYNC2" << std::endl;
-                        state = STATE_LENGTH;
-                        m_recv_packet->uByteToBuf(c[0]);
-                        length = 2;
-                    } else {
-                        state = STATE_SYNC1;
-                    }
-                } else {
-                    buffLength = 0;
-                }
-                break;
-            case STATE_LENGTH:
-                if (readBuff(c, length)) {
-                    length = ((uint16_t) c[0] & 0xff) << 8 | ((uint16_t) c[1] & 0xff);
-                    if (length > 5) {
-                        //std::cout << "SYNC_LENGTH" << std::endl;
-                        state = STATE_ACQUIRE_DATA;
-                        m_recv_packet->uByte2ToBuf(length);
-                    } else {
-                        length = 1;
-                        state = STATE_SYNC1;
-                    }
-                } else {
-                    buffLength = 0;
-                }
-                break;
-            case STATE_ACQUIRE_DATA:
-                if (readBuff(c, length)) {
-                    m_recv_packet->dataToBuf(c, length);
-                    if (m_recv_packet->verifyCheckSum()) {
-                        //std::cout << "STATE_ACQUIRE_DATA" << std::endl;
-                        m_recv_packet->resetRead();
-                        parseCommand();
-                    }
-                    state = STATE_SYNC1;
-                } else {
-                    buffLength = 0;
-                }
-                length = 1;
-                break;
+    do {
+        if (!readBuff(c, length)) {
+            return SPStatus::RX_IDLE;
         }
+        //std::cout << std::string().copy((char*)c, length, 0) << std::endl;
+        spStatus = receivePacket(c, length);
 
+    } while (spStatus != SPStatus::RX_COMPLETE && spStatus != SPStatus::RX_SYNCFAIL);
+    if (spStatus == SPStatus::RX_SYNCFAIL) {
+
+        const char *data = m_recvPacket->getBuf();
+        length = m_recvPacket->getLength();
+        if (data[0] != '\r') {
+            //if (data[0] == 0xaa) buff.append("\n");
+            QString temp;
+            if (m_receiveHex) {
+                for (int i = 0; i < length; i++) {
+                    QByteArray hex = QByteArray(&data[i], 1).toHex();
+                    temp.append(hex).append(" ");
+                }
+            } else {
+                temp.append(QByteArray(data, length));
+            }
+            emit showString(temp);
+        }
+    }
+    return spStatus;
+}
+
+SPStatus SerialPortThread::sendProcess()
+{
+}
+
+void SerialPortThread::run()
+{
+    QTime timer;
+    timer.start();
+    SPStatus receiveStatus = SPStatus::RX_COMPLETE;
+    while (PortStatus::open == m_portStatus) {
+//        if (receiveStatus == SPStatus::RX_IDLE) {
+//            if (timer.elapsed() > 1000) {
+//                std::cout << "time out" << std::endl;
+//                timer.start();
+//                receiveStatus = receiveProcess();
+//            }
+//        } else {
+            receiveStatus = receiveProcess();
+        //}
+        //SPStatus sendStatus = sendProcess();
+        //sendbufmutex.lock();
+        if (m_sendPending) {
+            send();
+            m_sendPending = false;
+            sendbufmutex.unlock();
+        }
         QThread::msleep(1);
     }
 }
@@ -258,15 +315,15 @@ void SerialPortThread::reSetMap()
 }
 void SerialPortThread::parseCommand()
 {
-    switch (m_recv_packet->getID()) {
+    switch (m_recvPacket->getID()) {
         case UPLOAD_MAP_PACKET_ID: {
-            uint8_t count = m_recv_packet->bufToUByte();
+            uint8_t count = m_recvPacket->bufToUByte();
             for (int i = 0; i < count; i++) {
-                uint16_t id = m_recv_packet->bufToUByte2();
-                uint8_t type = m_recv_packet->bufToUByte();
-                uint16_t x = m_recv_packet->bufToUByte2();
-                uint16_t y = m_recv_packet->bufToUByte2();
-                uint8_t theta = m_recv_packet->bufToUByte();
+                uint16_t id = m_recvPacket->bufToUByte2();
+                uint8_t type = m_recvPacket->bufToUByte();
+                uint16_t x = m_recvPacket->bufToUByte2();
+                uint16_t y = m_recvPacket->bufToUByte2();
+                uint8_t theta = m_recvPacket->bufToUByte();
                 emit drawPoseData(x, y, theta, type);
                 std::cout << id << " " << (int) type << " " << x << " " << y << " "
                           << (int) theta << std::endl;
@@ -275,9 +332,9 @@ void SerialPortThread::parseCommand()
         }
         case UPLOAD_CURRENT_POSE_ID: {
             PoseData currentPose;
-            currentPose.x = m_recv_packet->bufToUByte2();
-            currentPose.y = m_recv_packet->bufToUByte2();
-            currentPose.theta = m_recv_packet->bufToUByte();
+            currentPose.x = m_recvPacket->bufToUByte2();
+            currentPose.y = m_recvPacket->bufToUByte2();
+            currentPose.theta = m_recvPacket->bufToUByte();
             if (!equalsP(lastPose, currentPose)) {
                 if (!first) {
                     emit drawPoseData(lastPose.x, lastPose.y, lastPose.theta, 0);
@@ -295,16 +352,20 @@ void SerialPortThread::parseCommand()
         case UPLOAD_NAV_PATH_ID : {
             std::cout << "get path ***********" << std::endl;
             PoseData prePose;
-            uint8_t count = m_recv_packet->bufToUByte();
-            prePose.x = m_recv_packet->bufToUByte2();
-            prePose.y = m_recv_packet->bufToUByte2();
-            for (int i = 1; i < count; i++) {
-                PoseData currentPose;
-                currentPose.x = m_recv_packet->bufToUByte2();
-                currentPose.y = m_recv_packet->bufToUByte2();
-                emit drawPath(prePose.x, prePose.y, currentPose.x, currentPose.y, 1);
-                prePose.x = currentPose.x;
-                prePose.y = currentPose.y;
+            uint8_t count = m_recvPacket->bufToUByte();
+            prePose.x = m_recvPacket->bufToUByte2();
+            prePose.y = m_recvPacket->bufToUByte2();
+            if (count == 1) {
+                emit drawPath(prePose.x, prePose.y, lastPose.x, lastPose.y, 1);
+            } else {
+                for (int i = 1; i < count; i++) {
+                    PoseData currentPose;
+                    currentPose.x = m_recvPacket->bufToUByte2();
+                    currentPose.y = m_recvPacket->bufToUByte2();
+                    emit drawPath(prePose.x, prePose.y, currentPose.x, currentPose.y, 1);
+                    prePose.x = currentPose.x;
+                    prePose.y = currentPose.y;
+                }
             }
         }
         default:

@@ -39,7 +39,7 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
     connect(serialPortThread, SIGNAL(showString(const QString&)), this, SLOT(onShowString(const QString&)));
     connect(serialPortThread, SIGNAL(drawPoseData(int, int, int, int)), this, SLOT(onDrawPoseData(int, int, int, int)));
     connect(serialPortThread, SIGNAL(drawPath(int, int, int, int, int)), this, SLOT(onDrawPath(int, int, int, int, int)));
-    //connect(ui->sendButton, SIGNAL(clicked()), this, SLOT(onSend()));
+    connect(ui->sendButton, SIGNAL(clicked()), serialPortThread, SLOT(onSend()));
     getSerialPorts();
     ui->sendButton->setDisabled(true);
     ui->receiveTextEdit->setFont(QFont(tr("Consolas"), 11));
