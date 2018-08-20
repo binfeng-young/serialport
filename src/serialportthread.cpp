@@ -111,10 +111,10 @@ void SerialPortThread::sendBuff(void *data, int len)
 
 void SerialPortThread::onSend()
 {
-    uint8_t toFold[] = {0xaa, 0x55, 0xa5, 0xc3, 0x34, 0, 0, 0, 0, 0x9b};
-    sendBuff(toFold, 10);
-    uint8_t virtualWall[] = {0xaa, 0x55, 0xa3, 0x27, 0x10, 0, 0, 0x27, 0x10, 0, 0, 0xf0, 0xd8, 0xff, 0xff, 0xf0, 0xd8, 0xff, 0xff, 02, 01, 0,0,0, 0x9f};
-    sendBuff(virtualWall, 25);
+    //uint8_t toFold[] = {0xaa, 0x55, 0xa5, 0xc3, 0x34, 0, 0, 0, 0, 0x9b};
+    //sendBuff(toFold, 10);
+    //uint8_t virtualWall[] = {0xaa, 0x55, 0xa3, 0x27, 0x10, 0, 0, 0x27, 0x10, 0, 0, 0xf0, 0xd8, 0xff, 0xff, 0xf0, 0xd8, 0xff, 0xff, 02, 01, 0,0,0, 0x9f};
+    //sendBuff(virtualWall, 25);
 }
 
 //void SerialPortThread::onRead()
@@ -240,7 +240,13 @@ SPStatus SerialPortThread::receiveProcess()
             } else {
                 temp.append(QByteArray(data, length));
             }
-            emit showString(temp);
+            m_showString.append(temp);
+            if (m_showString.size() > 10 || m_showStringOutTime.elapsed() > 100) {
+                emit showString(m_showString);
+                //std::cout << "showString" << std::endl;
+                m_showStringOutTime.start();
+                m_showString.clear();
+            }
         }
     }
     return spStatus;

@@ -8,6 +8,7 @@
 #include <QThread>
 #include <mutex>
 #include <QSerialPort>
+#include <QtCore/QTime>
 
 class Packet;
 enum class SPStatus {
@@ -68,8 +69,10 @@ private:
     Packet* m_recvPacket;
     PortStatus m_portStatus;
     QString m_deviceName;
+    QString m_showString;
+    QTime m_showStringOutTime;
     bool m_receiveHex;
-    QMutex m_serialMutex;
+    //QMutex m_serialMutex;
     std::mutex sendbufmutex;
     bool m_sendPending;
     char * m_sendBuf;
