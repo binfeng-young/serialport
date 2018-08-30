@@ -45,10 +45,16 @@ void SerialPortThread::open(const QString &deviceName)
     if (m_portStatus == PortStatus::open) {
         emit opened(true);
         m_serialDevice->clear();
-        start();
+        m_queueOffSet = 0;
+        m_showStringOutTime.start();
+        //m_serialDevice->setDataTerminalReady(true);
+        //connect(m_serialDevice, SIGNAL(readyRead()), this, SLOT(readFromSerial()));
+        m_serialDevice->moveToThread(this);
         connect(m_serialDevice, static_cast<void (QSerialPort::*)(QSerialPort::SerialPortError)>(&QSerialPort::error),
                 this, &SerialPortThread::handleSerialError);
-        m_serialDevice->moveToThread(this);
+
+        start();
+
         std::cout << "open" << std::endl;
     } else {
         emit opened(false);
@@ -60,7 +66,7 @@ void SerialPortThread::open(const QString &deviceName)
 void SerialPortThread::close()
 {
     if (nullptr != m_serialDevice) {
-        //disconnect(m_serialDevice, SIGNAL(readyRead()), this, SLOT(onRead()));
+        //disconnect(m_serialDevice, SIGNAL(readyRead()), this, SLOT(readFromSerial()));
         m_portStatus = PortStatus::closed;
         wait();
         delete m_serialDevice;
@@ -113,26 +119,55 @@ void SerialPortThread::onSend()
 {
     //uint8_t toFold[] = {0xaa, 0x55, 0xa5, 0xc3, 0x34, 0, 0, 0, 0, 0x9b};
     //sendBuff(toFold, 10);
-    //uint8_t virtualWall[] = {0xaa, 0x55, 0xa3, 0x27, 0x10, 0, 0, 0x27, 0x10, 0, 0, 0xf0, 0xd8, 0xff, 0xff, 0xf0, 0xd8, 0xff, 0xff, 02, 01, 0,0,0, 0x9f};
-    //sendBuff(virtualWall, 25);
+//    uint8_t virtualWall[] = {0xaa, 0x55, 0xa3, 0x27, 0x10, 0, 0, 0x27, 0x10, 0, 0, 0xf0, 0xd8, 0xff, 0xff, 0xf0, 0xd8, 0xff, 0xff, 02, 01, 0,0,0, 0x9f};
+//    sendBuff(virtualWall, 25);
 }
 
-//void SerialPortThread::onRead()
-//{
-//    //QByteArray arr = m_serialDevice->readAll();
-//    //ui->receiveTextEdit->append(arr);
-//}
+void SerialPortThread::readFromSerial()
+{
+    QByteArray arr = m_serialDevice->readAll();
+    m_readQueue.push(arr);
+    std::cout << "read  "  << arr.size() << std::endl;
+}
 bool SerialPortThread::readChar(char& c)
 {
-    m_serialDevice->waitForBytesWritten(1);
-    if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead(1)) {
-        m_serialDevice->read(&c, 1);
-        return true;
-    } else {
-        msleep(100);
-        return false;
+    if (m_arr.isEmpty()) {
+        m_serialDevice->waitForBytesWritten(1);
+        if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead(1)) {
+            m_arr = m_serialDevice->readAll();
+            //m_readQueue.push(arr);
+            //m_serialDevice->read(&c, 1);
+            //return true;
+                //std::cout << m_arr.size() << std::endl;
+            if (m_arr.isEmpty()) {
+                return false;
+            }
+        } else {
+            msleep(10);
+            return false;
+        }
     }
-
+    //m_serialDevice->waitForReadyRead(1);
+//    if (m_readQueue.empty()) {
+//        return false;
+//    }
+//    QByteArray arr = m_readQueue.front();
+//    while (arr.isEmpty()) {
+//        m_readQueue.pop();
+//        m_queueOffSet = 0;
+//        if (m_readQueue.empty()) {
+//            return false;
+//        }
+//    }
+//
+    c = m_arr.at(m_queueOffSet++);
+//
+    if (m_queueOffSet >= m_arr.size()) {
+        m_queueOffSet = 0;
+        //m_readQueue.pop();
+        m_arr.clear();
+    }
+    return true;
 }
 
 bool SerialPortThread::readBuff(void *data, int len)
@@ -148,6 +183,10 @@ bool SerialPortThread::readBuff(void *data, int len)
             *((char *) data + i) = c;
             timer.start();
             i++;
+            //std::cout << "read  " << (int)(c) << std::endl;
+        } else if (timer.elapsed() < 2000) {
+            QThread::msleep(1);
+            //std::cout << "time out ---" << std::endl;
         } else if (timer.elapsed() > 2000) {
             return false;
         }
@@ -214,6 +253,12 @@ SPStatus SerialPortThread::receivePacket(uint8_t *c, uint16_t &length)
 
 SPStatus SerialPortThread::receiveProcess()
 {
+    if (m_showString.size() &&  m_showStringOutTime.elapsed() > 100) {
+        emit showString(m_showString);
+        //std::cout << "showString" << std::endl;
+        m_showStringOutTime.start();
+        m_showString.clear();
+    }
     SPStatus spStatus = SPStatus::RX_IDLE;
     uint16_t length = 1;
     uint8_t c[64];
@@ -241,7 +286,7 @@ SPStatus SerialPortThread::receiveProcess()
                 temp.append(QByteArray(data, length));
             }
             m_showString.append(temp);
-            if (m_showString.size() > 10 || m_showStringOutTime.elapsed() > 100) {
+            if (m_showString.size() > 10) {
                 emit showString(m_showString);
                 //std::cout << "showString" << std::endl;
                 m_showStringOutTime.start();
@@ -249,6 +294,7 @@ SPStatus SerialPortThread::receiveProcess()
             }
         }
     }
+
     return spStatus;
 }
 

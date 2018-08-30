@@ -9,6 +9,7 @@
 #include <mutex>
 #include <QSerialPort>
 #include <QtCore/QTime>
+#include <queue>
 
 class Packet;
 enum class SPStatus {
@@ -51,6 +52,7 @@ public slots:
     void handleSerialError(QSerialPort::SerialPortError error);
     void onSend();
 //    void onRead();
+    void readFromSerial();
 
 private:
     SPStatus receiveProcess();
@@ -77,6 +79,9 @@ private:
     bool m_sendPending;
     char * m_sendBuf;
     uint16_t m_sendLen;
+    std::queue<QByteArray> m_readQueue;
+    QByteArray m_arr;
+    int m_queueOffSet;
 protected:
     void run() override;
 };
