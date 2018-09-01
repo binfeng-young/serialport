@@ -253,7 +253,7 @@ SPStatus SerialPortThread::receivePacket(uint8_t *c, uint16_t &length)
 
 SPStatus SerialPortThread::receiveProcess()
 {
-    if (m_showString.size() &&  m_showStringOutTime.elapsed() > 100) {
+    if (m_showString.size() &&  m_showStringOutTime.elapsed() > 10) {
         emit showString(m_showString);
         //std::cout << "showString" << std::endl;
         m_showStringOutTime.start();
@@ -286,7 +286,7 @@ SPStatus SerialPortThread::receiveProcess()
                 temp.append(QByteArray(data, length));
             }
             m_showString.append(temp);
-            if (m_showString.size() > 10) {
+            if (m_showString.size() > 100) {
                 emit showString(m_showString);
                 //std::cout << "showString" << std::endl;
                 m_showStringOutTime.start();

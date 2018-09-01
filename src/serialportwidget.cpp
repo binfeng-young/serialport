@@ -26,10 +26,13 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
         serialPortThread->reSetMap();
         drawGridMap();
     });
-    connect(ui->receiveTextEdit, &QTextEdit::textChanged, [&]() {
-        QTextCursor cursor = ui->receiveTextEdit->textCursor();
-        cursor.movePosition(QTextCursor::End);
-        ui->receiveTextEdit->setTextCursor(cursor);
+    connect(ui->cleanBuff, &QPushButton::clicked, [&](){
+        ui->receivePlainTextEdit->clear();
+    });
+    connect(ui->receivePlainTextEdit, &QPlainTextEdit::textChanged, [&]() {
+//        QTextCursor cursor = ui->receivePlainTextEdit->textCursor();
+//        cursor.movePosition(QTextCursor::End);
+        ui->receivePlainTextEdit->moveCursor(QTextCursor::End);
     });
     connect(ui->receiveHexCheckBox, SIGNAL(stateChanged(int)), serialPortThread, SLOT(onReceiveHex(int)));
 
@@ -42,7 +45,12 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
     connect(ui->sendButton, SIGNAL(clicked()), serialPortThread, SLOT(onSend()));
     getSerialPorts();
     ui->sendButton->setDisabled(true);
-    ui->receiveTextEdit->setFont(QFont(tr("Consolas"), 11));
+    ui->receivePlainTextEdit->setFont(QFont(tr("Consolas"), 11));
+    //ui->scrollArea->setBackgroundRole(QPalette::Light);
+    //ui->scrollArea->setWindowIconText("asdfeqwegdsgfasdgad\n\nasdfawe");
+    //ui->label->setText("fasdgqwegadsgadgadflkajd;\n\n\nadsfasdfad\nb\nafadfadsf\n");
+    //ui->label->text().append("fqwjerowejrowiejrowiejfaowijfalsdkfj");
+    //ui->label->setTextInteractionFlags(Qt::TextSelectableByMouse); // set default
     //ui->mapView->setFrameShape (QFrame::Box);
     m_sceneSize = QSize(560, 560);
     m_cellSize = m_sceneSize / 80;
@@ -118,7 +126,7 @@ void SerialPortWidget::onOpened(bool opened)
 
 void SerialPortWidget::onShowString(const QString &string)
 {
-    ui->receiveTextEdit->insertPlainText(string);
+    ui->receivePlainTextEdit->textCursor().insertText(string);
 }
 enum PoseType {
     FREE_SPACE,

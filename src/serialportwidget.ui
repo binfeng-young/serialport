@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>980</width>
+    <width>1174</width>
     <height>706</height>
    </rect>
   </property>
@@ -60,12 +60,15 @@
       </layout>
      </item>
      <item>
-      <widget class="QTextEdit" name="receiveTextEdit">
+      <widget class="QPlainTextEdit" name="receivePlainTextEdit">
        <property name="minimumSize">
         <size>
          <width>300</width>
          <height>0</height>
         </size>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
@@ -110,6 +113,19 @@
        </item>
        <item>
         <layout class="QGridLayout" name="gridLayout">
+         <item row="1" column="0">
+          <widget class="QPushButton" name="sendButton">
+           <property name="maximumSize">
+            <size>
+             <width>100</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>send</string>
+           </property>
+          </widget>
+         </item>
          <item row="1" column="1">
           <widget class="QPushButton" name="openButton">
            <property name="maximumSize">
@@ -120,6 +136,23 @@
            </property>
            <property name="text">
             <string>open</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QComboBox" name="portsList">
+           <property name="maximumSize">
+            <size>
+             <width>100</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QPushButton" name="cleanBuff">
+           <property name="text">
+            <string>cleanBuff</string>
            </property>
           </widget>
          </item>
@@ -136,30 +169,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="0">
-          <widget class="QPushButton" name="sendButton">
-           <property name="maximumSize">
-            <size>
-             <width>100</width>
-             <height>16777215</height>
-            </size>
-           </property>
-           <property name="text">
-            <string>send</string>
-           </property>
-          </widget>
-         </item>
-         <item row="0" column="0">
-          <widget class="QComboBox" name="portsList">
-           <property name="maximumSize">
-            <size>
-             <width>100</width>
-             <height>16777215</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-         <item row="2" column="0">
+         <item row="2" column="1">
           <widget class="QPushButton" name="cleanMapButton">
            <property name="text">
             <string>cleanMap</string>
