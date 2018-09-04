@@ -127,6 +127,7 @@ void SerialPortWidget::onOpened(bool opened)
 void SerialPortWidget::onShowString(const QString &string)
 {
     ui->receivePlainTextEdit->textCursor().insertText(string);
+    //std::cout << string.toStdString();
 }
 enum PoseType {
     FREE_SPACE,
