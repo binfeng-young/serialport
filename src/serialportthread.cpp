@@ -263,7 +263,7 @@ SPStatus SerialPortThread::receiveProcess()
     uint16_t length = 1;
     uint8_t c[1024];
     do {
-        if (!readBuff(c, length, 20)) {
+        if (!readBuff(c, length, 100)) {
             return SPStatus::RX_IDLE;
         }
         //std::cout << std::string().copy((char*)c, length, 0) << std::endl;
