@@ -60,7 +60,7 @@ private:
     SPStatus sendProcess();
 
     bool readChar(char &c);
-    bool readBuff(void *data, int len);
+    bool readBuff(void *data, int len, int timeOut);
     void parseCommand();
     bool writChar(char &c);
     bool send();

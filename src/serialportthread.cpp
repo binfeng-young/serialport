@@ -170,7 +170,7 @@ bool SerialPortThread::readChar(char& c)
     return true;
 }
 
-bool SerialPortThread::readBuff(void *data, int len)
+bool SerialPortThread::readBuff(void *data, int len, int timeOut)
 {
     QTime timer;
     timer.start();
@@ -184,10 +184,10 @@ bool SerialPortThread::readBuff(void *data, int len)
             timer.start();
             i++;
             //std::cout << "read  " << (int)(c) << std::endl;
-        } else if (timer.elapsed() < 2000) {
+        } else if (timer.elapsed() < timeOut) {
             QThread::msleep(1);
             //std::cout << "time out ---" << std::endl;
-        } else if (timer.elapsed() > 2000) {
+        } else if (timer.elapsed() > timeOut) {
             return false;
         }
     }
@@ -261,9 +261,9 @@ SPStatus SerialPortThread::receiveProcess()
     }
     SPStatus spStatus = SPStatus::RX_IDLE;
     uint16_t length = 1;
-    uint8_t c[64];
+    uint8_t c[1024];
     do {
-        if (!readBuff(c, length)) {
+        if (!readBuff(c, length, 20)) {
             return SPStatus::RX_IDLE;
         }
         //std::cout << std::string().copy((char*)c, length, 0) << std::endl;
@@ -324,7 +324,7 @@ void SerialPortThread::run()
             m_sendPending = false;
             sendbufmutex.unlock();
         }
-        QThread::msleep(1);
+        //QThread::msleep(1);
     }
 }
 
