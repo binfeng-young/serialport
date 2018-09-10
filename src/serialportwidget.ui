@@ -94,7 +94,7 @@
           </widget>
          </item>
          <item>
-          <widget class="QTextEdit" name="sendTextEdit">
+          <widget class="QPlainTextEdit" name="sendPlainTextEdit">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
              <horstretch>0</horstretch>

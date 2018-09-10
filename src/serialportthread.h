@@ -50,7 +50,7 @@ public slots:
     void deviceChanged(const QString & deviceName);
     void onReceiveHex(int checkState);
     void handleSerialError(QSerialPort::SerialPortError error);
-    void onSend();
+    void onSend(const QByteArray &text);
 //    void onRead();
     void readFromSerial();
 
@@ -64,7 +64,7 @@ private:
     void parseCommand();
     bool writChar(char &c);
     bool send();
-    void sendBuff(void *data, int len);
+    void sendBuff(const QByteArray&);
 
 private:
     QSerialPort *m_serialDevice;
@@ -79,8 +79,8 @@ private:
     bool m_sendPending;
     char * m_sendBuf;
     uint16_t m_sendLen;
-    std::queue<QByteArray> m_readQueue;
-    QByteArray m_arr;
+    QByteArray m_readArray;
+    QByteArray m_writeArray;
     int m_queueOffSet;
 protected:
     void run() override;

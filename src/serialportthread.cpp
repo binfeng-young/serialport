@@ -90,7 +90,7 @@ void SerialPortThread::onOpen()
     }
 }
 
-bool SerialPortThread::writChar(char &c)
+bool SerialPortThread:: writChar(char &c)
 {
     m_serialDevice->write(&c, 1);
     m_serialDevice->waitForBytesWritten(1);
@@ -99,47 +99,59 @@ bool SerialPortThread::writChar(char &c)
 
 bool SerialPortThread::send()
 {
-    for (int i = 0; i < m_sendLen; i++) {
+    /*for (int i = 0; i < m_sendLen; i++) {
         writChar(m_sendBuf[i]);
-    }
-    std::cout << "send" << std::endl;
-    return true;
-}
-void SerialPortThread::sendBuff(void *data, int len)
-{
-    sendbufmutex.lock();
+    }*/
 
-    m_sendPending = true;
+    if (!m_writeArray.isEmpty()) {
+        std::lock_guard<std::mutex> lock(sendbufmutex);
+        std::cout << "send" << std::endl;
+        m_serialDevice->write(m_writeArray);
+        m_writeArray.clear();
+        return true;
+    }
+    return false;
+}
+void SerialPortThread::sendBuff(const QByteArray& text)
+{
+    std::lock_guard<std::mutex> lock(sendbufmutex);
+    m_writeArray.append(text);
+/*    m_sendPending = true;
     m_sendLen = len;
-    memcpy(m_sendBuf, data, len);
+    memcpy(m_sendBuf, data, len);*/
     //sendbufmutex.unlock();
 }
 
-void SerialPortThread::onSend()
+void SerialPortThread::onSend(const QByteArray& text)
 {
+    if (PortStatus::closed == m_portStatus) {
+        return;
+    }
+    //aa 55 a5 c3 34 00 00 00 00 9b
     //uint8_t toFold[] = {0xaa, 0x55, 0xa5, 0xc3, 0x34, 0, 0, 0, 0, 0x9b};
     //sendBuff(toFold, 10);
 //    uint8_t virtualWall[] = {0xaa, 0x55, 0xa3, 0x27, 0x10, 0, 0, 0x27, 0x10, 0, 0, 0xf0, 0xd8, 0xff, 0xff, 0xf0, 0xd8, 0xff, 0xff, 02, 01, 0,0,0, 0x9f};
 //    sendBuff(virtualWall, 25);
+    sendBuff(text);
 }
 
 void SerialPortThread::readFromSerial()
 {
     QByteArray arr = m_serialDevice->readAll();
-    m_readQueue.push(arr);
+    //m_readQueue.push(arr);
     std::cout << "read  "  << arr.size() << std::endl;
 }
 bool SerialPortThread::readChar(char& c)
 {
-    if (m_arr.isEmpty()) {
+    if (m_readArray.isEmpty()) {
         m_serialDevice->waitForBytesWritten(1);
         if (m_serialDevice->bytesAvailable() || m_serialDevice->waitForReadyRead(1)) {
-            m_arr = m_serialDevice->readAll();
+            m_readArray = m_serialDevice->readAll();
             //m_readQueue.push(arr);
             //m_serialDevice->read(&c, 1);
             //return true;
-            std::cout << "read: " <<  m_arr.size() << std::endl;
-            if (m_arr.isEmpty()) {
+            std::cout << "read: " <<  m_readArray.size() << std::endl;
+            if (m_readArray.isEmpty()) {
                 return false;
             }
         } else {
@@ -160,12 +172,12 @@ bool SerialPortThread::readChar(char& c)
 //        }
 //    }
 //
-    c = m_arr.at(m_queueOffSet++);
+    c = m_readArray.at(m_queueOffSet++);
 //
-    if (m_queueOffSet >= m_arr.size()) {
+    if (m_queueOffSet >= m_readArray.size()) {
         m_queueOffSet = 0;
         //m_readQueue.pop();
-        m_arr.clear();
+        m_readArray.clear();
     }
     return true;
 }
@@ -300,6 +312,9 @@ SPStatus SerialPortThread::receiveProcess()
 
 SPStatus SerialPortThread::sendProcess()
 {
+    SPStatus sendStatus = SPStatus::TX_IDLE;
+    send();
+    return sendStatus;
 }
 
 void SerialPortThread::run()
@@ -317,13 +332,8 @@ void SerialPortThread::run()
 //        } else {
             receiveStatus = receiveProcess();
         //}
-        //SPStatus sendStatus = sendProcess();
-        //sendbufmutex.lock();
-        if (m_sendPending) {
-            send();
-            m_sendPending = false;
-            sendbufmutex.unlock();
-        }
+        SPStatus sendStatus = sendProcess();
+
         //QThread::msleep(1);
     }
 }

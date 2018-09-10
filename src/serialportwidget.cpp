@@ -42,7 +42,7 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
     connect(serialPortThread, SIGNAL(showString(const QString&)), this, SLOT(onShowString(const QString&)));
     connect(serialPortThread, SIGNAL(drawPoseData(int, int, int, int)), this, SLOT(onDrawPoseData(int, int, int, int)));
     connect(serialPortThread, SIGNAL(drawPath(int, int, int, int, int)), this, SLOT(onDrawPath(int, int, int, int, int)));
-    connect(ui->sendButton, SIGNAL(clicked()), serialPortThread, SLOT(onSend()));
+    connect(ui->sendButton, SIGNAL(clicked()), this, SLOT(onSend()));
     getSerialPorts();
     ui->sendButton->setDisabled(true);
     ui->receivePlainTextEdit->setFont(QFont(tr("Consolas"), 11));
@@ -201,4 +201,50 @@ void SerialPortWidget::drawGridMap()
                 QBrush(QColor(255, 255, 255)));
         }
     }
+}
+
+void SerialPortWidget::onSend()
+{
+    auto text = ui->sendPlainTextEdit->toPlainText();
+    if (text.isEmpty()) {
+        return;
+    }
+    auto convertHexChar = [](char ch) {
+        if((ch >= '0') && (ch <= '9'))
+            return ch - 0x30;
+        else if((ch >= 'A') && (ch <= 'F'))
+            return ch - 'A' + 10;
+        else if((ch >= 'a') && (ch <= 'f'))
+            return ch - 'a' + 10;
+        else return -1;
+    };
+
+    QByteArray sendData;
+    int len = text.length();
+    for(int i = 0; i < len; i++) {
+        char hBit = text[i].toLatin1();
+        if (hBit == ' ') {
+            continue;
+        }
+        i++;
+        char lBit = '0';
+        if (i < len) {
+            lBit = text[i].toLatin1();
+        }
+        if (i >= len || lBit == ' ') {
+            lBit = hBit;
+            hBit = '0';
+        }
+        int hexData = convertHexChar(hBit);
+        int lowHexData = convertHexChar(lBit);
+        //std::cout << hexData << " " << lowHexData <<std::endl;
+        sendData.append((char)(hexData * 16 + lowHexData));
+    }
+    //auto s  =// string.toLatin1();//qString2Hex(string);
+/*        std::cout << sendData.size() << std::endl;
+    for (auto c : sendData) {
+        std::cout <<(int)(uint8_t)c << " ";
+    }
+    std::cout << std::endl;*/
+    serialPortThread->onSend(sendData);
 }
