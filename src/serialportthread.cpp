@@ -13,8 +13,8 @@ SerialPortThread::SerialPortThread()
       , m_portStatus(PortStatus::closed)
       , m_receiveHex(false)
 {
-    m_recvPacket = new Packet(64, 5, 2);
-    m_sendBuf = new char[64]();
+    m_recvPacket = new Packet(1024, 5, 2);
+    m_sendBuf = new char[1024]();
     m_sendPending = false;
     qRegisterMetaType<QSerialPort::SerialPortError>("QSerialPort::SerialPortError");
     reSetMap();
@@ -150,7 +150,7 @@ bool SerialPortThread::readChar(char& c)
             //m_readQueue.push(arr);
             //m_serialDevice->read(&c, 1);
             //return true;
-            std::cout << "read: " <<  m_readArray.size() << std::endl;
+            //std::cout << "read: " <<  m_readArray.size() << std::endl;
             if (m_readArray.isEmpty()) {
                 return false;
             }
@@ -238,7 +238,7 @@ SPStatus SerialPortThread::receivePacket(uint8_t *c, uint16_t &length)
             length = ((uint16_t) c[0] & 0xff) << 8 | ((uint16_t) c[1] & 0xff);
             m_recvPacket->uByte2ToBuf(length);
             if (length > 5) {
-                //std::cout << "SYNC_LENGTH" << std::endl;
+                //std::cout << "SYNC_LENGTH " << length << std::endl;
                 state = STATE_ACQUIRE_DATA;
             } else {
                 length = 1;
@@ -254,6 +254,7 @@ SPStatus SerialPortThread::receivePacket(uint8_t *c, uint16_t &length)
                 parseCommand();
                 spStatus =  SPStatus::RX_COMPLETE;
             } else {
+                //std::cout << "verify fail" << std::endl;
                 spStatus = SPStatus::RX_SYNCFAIL;
             }
             state = STATE_SYNC1;
@@ -273,13 +274,14 @@ SPStatus SerialPortThread::receiveProcess()
     }
     SPStatus spStatus = SPStatus::RX_IDLE;
     uint16_t length = 1;
-    uint8_t c[1024];
     do {
+        uint8_t* c = new uint8_t[length]();
         if (!readBuff(c, length, 200)) {
             return SPStatus::RX_IDLE;
         }
         //std::cout << std::string().copy((char*)c, length, 0) << std::endl;
         spStatus = receivePacket(c, length);
+        delete[] c;
 
     } while (spStatus != SPStatus::RX_COMPLETE && spStatus != SPStatus::RX_SYNCFAIL);
     if (spStatus == SPStatus::RX_SYNCFAIL) {

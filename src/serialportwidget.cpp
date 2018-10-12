@@ -52,8 +52,8 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
     //ui->label->text().append("fqwjerowejrowiejrowiejfaowijfalsdkfj");
     //ui->label->setTextInteractionFlags(Qt::TextSelectableByMouse); // set default
     //ui->mapView->setFrameShape (QFrame::Box);
-    m_sceneSize = QSize(560, 560);
-    m_cellSize = m_sceneSize / 80;
+    m_sceneSize = QSize(864, 864);
+    m_cellSize = m_sceneSize / 144;
     QGraphicsScene *scene = new QGraphicsScene();
     scene->setSceneRect(0, 0, m_sceneSize.width(), m_sceneSize.height());
     ui->mapView->setScene(scene);
@@ -140,7 +140,7 @@ void SerialPortWidget::onDrawPoseData(int x, int y, int theta, int type)
 //        (79 - y) * m_cellSize.width() + 1, (79 - x) * m_cellSize.height() + 1, QTransform());
     QGraphicsRectItem *itemRect = nullptr; //dynamic_cast<QGraphicsRectItem *> (item);
     auto items = ui->mapView->scene()->items(
-        QRectF((79 - y) * m_cellSize.width() - 2, (79 - x) * m_cellSize.height() - 2, m_cellSize.width() - 2,
+        QRectF((143 - y) * m_cellSize.width() - 2, (143 - x) * m_cellSize.height() - 2, m_cellSize.width() - 2,
                m_cellSize.height() - 2));
 //    std::cout <<"pose " <<(79 - y) * m_cellSize.width() + 2 << " " << (79 - x) * m_cellSize.height() + 2 << " " << items.size() <<  std::endl;
     for (auto item : items) {
@@ -170,7 +170,7 @@ void SerialPortWidget::onDrawPoseData(int x, int y, int theta, int type)
                 break;
         }
         itemRect->setBrush(QBrush(color));
-        itemRect->setPen(QPen(color));
+        //itemRect->setPen(QPen(color));
     }
     //ui->mapView->repaint();
 //    std::cout << "pose done " << std::endl;
@@ -184,16 +184,16 @@ void SerialPortWidget::onDrawPath(int x1, int y1, int x2, int y2, int type)
     }
     QGraphicsScene *scene = ui->mapView->scene();
     //std::cout << " lene :" << x1 << " "<< y1 << " " << x2 << " " << y2 << std::endl;
-    scene->addLine((79 - y1) * m_cellSize.width() + 4, (79 - x1) * m_cellSize.height() + 4, (79 - y2) * m_cellSize.width() +4,
-                   (79 - x2) * m_cellSize.height() + 4, QPen(color));
+    scene->addLine((143 - y1) * m_cellSize.width() + 3, (143 - x1) * m_cellSize.height() + 3, (143 - y2) * m_cellSize.width() +3,
+                   (143 - x2) * m_cellSize.height() + 3, QPen(color));
    // std::cout << "line done " << std::endl;
 }
 
 void SerialPortWidget::drawGridMap()
 {
     QGraphicsScene *scene = ui->mapView->scene();
-    for (int i = 0; i < 80; i++) {
-        for (int j = 0; j < 80; j++) {
+    for (int i = 0; i < 143; i++) {
+        for (int j = 0; j < 143; j++) {
             scene->addRect(
                 QRectF(i * m_cellSize.width(), j * m_cellSize.height(), m_cellSize.width(), m_cellSize.height()),
                 QPen(QColor(255, 255, 255)),
