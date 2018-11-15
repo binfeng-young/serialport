@@ -24,6 +24,12 @@ enum class SPStatus {
     RX_RECEIVING,
     RX_COMPLETE,
 };
+struct PoseData {
+    uint16_t x;
+    uint16_t y;
+    uint8_t theta;
+};
+
 class SerialPortThread : public QThread {
 Q_OBJECT
     enum class PortStatus {
@@ -43,7 +49,10 @@ signals:
     void opened(bool opened);
     void showString(const QString& string);
     void drawPoseData(int x, int y, int theta, int type);
-    void drawPath(int x1, int y1, int x2, int y2, int type);
+    void drawMovePath(int x1, int y1, int x2, int y2);
+    void drawNavPath(std::vector<QPair<int, int>> navPath);
+    void updateCurPose(int x, int y, int theta);
+    void drawBound(int maxx, int maxy, int minx, int miny, int type);
 
 public slots:
     void onOpen();

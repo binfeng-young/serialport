@@ -351,11 +351,6 @@ void SerialPortThread::onReceiveHex(int checkState)
     std::cout << m_receiveHex << std::endl;
 }
 
-struct PoseData {
-    uint16_t x;
-    uint16_t y;
-    uint8_t theta;
-};
 bool equalsP(const PoseData& p, const PoseData& q) {
     return p.x == q.x && p.y ==  q.y;
 }
@@ -399,10 +394,10 @@ void SerialPortThread::parseCommand()
             currentPose.x = m_recvPacket->bufToUByte2();
             currentPose.y = m_recvPacket->bufToUByte2();
             currentPose.theta = m_recvPacket->bufToUByte();
-            if (!equalsP(lastPose, currentPose)) {
+            if (!equalsP(lastPose, currentPose) || first) {
                 if (!first) {
-                    emit drawPoseData(lastPose.x, lastPose.y, lastPose.theta, 0);
-                    emit drawPath(lastPose.x, lastPose.y, currentPose.x, currentPose.y, 0);
+                    //emit drawPoseData(lastPose.x, lastPose.y, lastPose.theta, 0);
+                    emit drawMovePath(lastPose.x, lastPose.y, currentPose.x, currentPose.y);
                 } else {
                     first = false;
                 }
@@ -410,27 +405,40 @@ void SerialPortThread::parseCommand()
                 lastPose.y = currentPose.y;
                 lastPose.theta = currentPose.theta;
             }
-            emit drawPoseData(currentPose.x, currentPose.y, currentPose.theta, 2);
+           // emit drawPoseData(currentPose.x, currentPose.y, currentPose.theta, 3);
+            emit updateCurPose(currentPose.x, currentPose.y, currentPose.theta);
             break;
         }
         case UPLOAD_NAV_PATH_ID : {
             std::cout << "get path ***********" << std::endl;
             PoseData prePose;
             uint8_t count = m_recvPacket->bufToUByte();
-            prePose.x = m_recvPacket->bufToUByte2();
-            prePose.y = m_recvPacket->bufToUByte2();
-            if (count == 1) {
-                emit drawPath(prePose.x, prePose.y, lastPose.x, lastPose.y, 1);
-            } else {
-                for (int i = 1; i < count; i++) {
-                    PoseData currentPose;
-                    currentPose.x = m_recvPacket->bufToUByte2();
-                    currentPose.y = m_recvPacket->bufToUByte2();
-                    emit drawPath(prePose.x, prePose.y, currentPose.x, currentPose.y, 1);
-                    prePose.x = currentPose.x;
-                    prePose.y = currentPose.y;
-                }
+            std::vector<QPair<int, int>> navPath;
+            navPath.emplace_back(QPair<int, int>(lastPose.x, lastPose.y));
+            for (int i = 0; i < count; i++) {
+
+                PoseData currentPose;
+                currentPose.x = m_recvPacket->bufToUByte2();
+                currentPose.y = m_recvPacket->bufToUByte2();
+                navPath.emplace_back(QPair<int, int>(currentPose.x, currentPose.y));
+//                emit drawMovePath(prePose.x, prePose.y, currentPose.x, currentPose.y, 1);
+//                prePose.x = currentPose.x;
+//                prePose.y = currentPose.y;
             }
+            emit drawNavPath(navPath);
+            break;
+        }
+        case UPLOAD_BOUND_ID: {
+            int x1 = m_recvPacket->bufToByte2();
+            int y1 = m_recvPacket->bufToByte2();
+            int x2 = m_recvPacket->bufToByte2();
+            int y2 = m_recvPacket->bufToByte2();
+            emit drawBound(x1, y1, x2, y2, 0);
+            x1 = m_recvPacket->bufToByte2();
+            y1 = m_recvPacket->bufToByte2();
+            x2 = m_recvPacket->bufToByte2();
+            y2 = m_recvPacket->bufToByte2();
+            emit drawBound(x1, y1, x2, y2, 1);
         }
         default:
             break;

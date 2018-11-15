@@ -22,6 +22,7 @@
 #define UPLOAD_WIFI_CONTROL_PACKET_ID   0x03
 #define UPLOAD_CURRENT_POSE_ID          0x04
 #define UPLOAD_NAV_PATH_ID              0x05
+#define UPLOAD_BOUND_ID                 0x06
 
 
 enum SyncState {
