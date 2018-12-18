@@ -219,13 +219,15 @@ void SerialPortWidget::onDrawBound(int maxx, int maxy, int minx, int miny, int t
 
 void SerialPortWidget::onDrawNavPath(std::vector<QPair<int, int>> navPath)
 {
-    for (auto &path : navPath_) {
-        delete path;
-    }
-    navPath_.clear();
     if (navPath.empty()) {
         return;
     }
+    std::cout << "on Draw nav path" << navPath.size() << std::endl;
+    for (auto &path : navPath_) {
+        delete path;
+        path = nullptr;
+    }
+    navPath_.clear();
     std::cout << "nav path size: " << navPath.size() << std::endl;
     QColor color(0x0000EE);
     QGraphicsScene *scene = ui->mapView->scene();

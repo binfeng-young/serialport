@@ -5,6 +5,8 @@
 #define SERIALPORT_PACKET_H
 
 #include <cstdint>
+#include "databuffer.h"
+#include <cl_endian.h>
 
 #define MAX_LENGTH                      64
 #define MAX_MAP_LENGTH                  1024
@@ -23,6 +25,7 @@
 #define UPLOAD_CURRENT_POSE_ID          0x04
 #define UPLOAD_NAV_PATH_ID              0x05
 #define UPLOAD_BOUND_ID                 0x06
+#define UPLOAD_MOVE_ID                  0x07
 
 
 enum SyncState {
@@ -30,11 +33,6 @@ enum SyncState {
     STATE_SYNC2,
     STATE_LENGTH,
     STATE_ACQUIRE_DATA
-};
-
-enum Packets {
-    MOTOR = 0X30,
-    IO_SENSORS = 0x31
 };
 class Packet {
 public:
@@ -46,11 +44,9 @@ public:
 
     void resetValid();
 
-    bool setLength(uint16_t length);
+    void setSize(size_t size);
 
-    void uByteToBuf(uint8_t val);
-
-    void uByte2ToBuf(uint16_t val);
+    size_t getSize();
 
     void dataToBuf(const void *data, int length);
 
@@ -64,18 +60,13 @@ public:
 
     void resetRead();
 
-    void create(uint16_t bufferSize, uint16_t headerLength, char *buf, uint16_t footerLength);
-
     void setBuf(char *buf);
 
-    const char *getBuf();
+    DataBuffer getBuf();
 
     void setMaxLength(uint16_t bufferSize);
 
     uint16_t getMaxLength();
-
-
-    uint16_t getLength();
 
     uint16_t getDataLength();
 
@@ -93,66 +84,49 @@ public:
 
     uint16_t getDataReadLength();
 
+    size_t write(const void *data, size_t len);
 
-    void byteToBuf(int8_t val);
+    size_t read(void *data, size_t len);
 
-    void byte2ToBuf(int16_t val);
+    template<typename Type>
+    void writeVal(Type val, bool big = true)
+    {
+        if (big) {
+            Endian::swap_if_little(&val, sizeof(val));
+        } else {
+            Endian::swap_if_big(&val, sizeof(val));
+        }
+        write(static_cast<const void*>(&val), sizeof(Type));
+    }
 
-    void byte4ToBuf(int32_t val);
-
-
-    void uByteSToBuf(uint8_t *buf, uint8_t num);
-
-    void uByte4ToBuf(uint32_t val);
-
-/**
-  @param str string to copy into buffer
-*/
-    void strToBuf(const char *str);
-
-    void strNToBuf(const char *str, int length);
-
-    void strToBufPadded(const char *str, int length);
-
-// void dataToBuf(const unsigned char *data, int length);
-
-    int8_t bufToByte();
-
-    int16_t bufToByte2();
-
-    int32_t bufToByte4();
-
-    uint8_t bufToUByte();
-
-    void bufToUByteS(uint8_t *buf, uint8_t num);
-
-    uint16_t bufToUByte2();
-
-    uint32_t bufToUByte4();
+    template<typename Type>
+    Type readVal(bool big = true)
+    {
+        Type ret;
+        size_t len = sizeof(Type);
+        read(static_cast<void*>(&ret), len);
+        if (big) {
+            Endian::swap_if_little(&ret, len);
+        } else {
+            Endian::swap_if_big(&ret, len);
+        }
+        return ret;
+    }
 
     void bufToStr(char *buf, int len);
-
-    void bufToData(char *data, int length);
-
-    //void duplicatePacket(Packet_t *src, Packet_t *dist);
 
     bool isNextGood(int bytes);
 
     bool isValid();
 
-    //void duplicatePacket();
-
     void finalizePacket();
 
 private:
     bool hasWriteCapacity(int bytes);
-
 private:
-    char *m_buf;
+    DataBuffer buffer;
     bool m_isValid;
-    uint16_t m_readLength;
-    uint16_t m_length;
-    uint16_t m_maxLength;
+    uint16_t position_;
     uint16_t m_headerLength;
     uint16_t m_footerLength;
 };

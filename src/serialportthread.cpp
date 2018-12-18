@@ -213,8 +213,8 @@ SPStatus SerialPortThread::receivePacket(uint8_t *c, uint16_t &length)
     switch (state) {
         case STATE_SYNC1: {
             //m_recvPacket->empty();
-            m_recvPacket->setLength(0);
-            m_recvPacket->uByteToBuf(c[0]);
+            m_recvPacket->setSize(0);
+            m_recvPacket->writeVal<uint8_t>(c[0]);
             if (c[0] != SYNC1) {
                 return SPStatus::RX_SYNCFAIL;
             }
@@ -224,7 +224,7 @@ SPStatus SerialPortThread::receivePacket(uint8_t *c, uint16_t &length)
         }
         case STATE_SYNC2: {
             // 为帧头2时，跳转到状态3，获取数据，否则跳回状态1
-            m_recvPacket->uByteToBuf(c[0]);
+            m_recvPacket->writeVal<uint8_t>(c[0]);
             if (c[0] != SYNC2) {
                 state = STATE_SYNC1;
                 return SPStatus::RX_SYNCFAIL;
@@ -236,7 +236,8 @@ SPStatus SerialPortThread::receivePacket(uint8_t *c, uint16_t &length)
         }
         case STATE_LENGTH:
             length = ((uint16_t) c[0] & 0xff) << 8 | ((uint16_t) c[1] & 0xff);
-            m_recvPacket->uByte2ToBuf(length);
+            printf("%x %x ***\r\n", c[0], c[1]);
+            m_recvPacket->writeVal<uint16_t>(length);
             if (length > 5) {
                 //std::cout << "SYNC_LENGTH " << length << std::endl;
                 state = STATE_ACQUIRE_DATA;
@@ -247,7 +248,7 @@ SPStatus SerialPortThread::receivePacket(uint8_t *c, uint16_t &length)
             }
             break;
         case STATE_ACQUIRE_DATA:
-            m_recvPacket->dataToBuf(c, length);
+            m_recvPacket->write(c, length);
             if (m_recvPacket->verifyCheckSum()) {
                 //std::cout << "STATE_ACQUIRE_DATA" << std::endl;
                 m_recvPacket->resetRead();
@@ -286,8 +287,8 @@ SPStatus SerialPortThread::receiveProcess()
     } while (spStatus != SPStatus::RX_COMPLETE && spStatus != SPStatus::RX_SYNCFAIL);
     if (spStatus == SPStatus::RX_SYNCFAIL) {
 
-        const char *data = m_recvPacket->getBuf();
-        length = m_recvPacket->getLength();
+        DataBuffer data = m_recvPacket->getBuf();
+        length = m_recvPacket->getSize();
         if (data[0] != '\r') {
             //if (data[0] == 0xaa) buff.append("\n");
             QString temp;
@@ -297,7 +298,7 @@ SPStatus SerialPortThread::receiveProcess()
                     temp.append(hex).append(" ");
                 }
             } else {
-                temp.append(QByteArray(data, length));
+                temp.append(QByteArray(data.get_data(), length));
             }
             m_showString.append(temp);
             if (m_showString.size() > 10) {
@@ -376,13 +377,13 @@ void SerialPortThread::parseCommand()
 {
     switch (m_recvPacket->getID()) {
         case UPLOAD_MAP_PACKET_ID: {
-            uint8_t count = m_recvPacket->bufToUByte();
+            uint8_t count = m_recvPacket->readVal<uint8_t>();
             for (int i = 0; i < count; i++) {
-                uint16_t id = m_recvPacket->bufToUByte2();
-                uint8_t type = m_recvPacket->bufToUByte();
-                uint16_t x = m_recvPacket->bufToUByte2();
-                uint16_t y = m_recvPacket->bufToUByte2();
-                uint8_t theta = m_recvPacket->bufToUByte();
+                uint16_t id = m_recvPacket->readVal<uint16_t>();
+                uint8_t type = m_recvPacket->readVal<uint8_t>();
+                uint16_t x = m_recvPacket->readVal<uint16_t>();
+                uint16_t y = m_recvPacket->readVal<uint16_t>();
+                uint8_t theta = m_recvPacket->readVal<uint8_t>();
                 emit drawPoseData(x, y, theta, type);
                 std::cout << id << " " << (int) type << " " << x << " " << y << " "
                           << (int) theta << std::endl;
@@ -391,9 +392,9 @@ void SerialPortThread::parseCommand()
         }
         case UPLOAD_CURRENT_POSE_ID: {
             PoseData currentPose;
-            currentPose.x = m_recvPacket->bufToUByte2();
-            currentPose.y = m_recvPacket->bufToUByte2();
-            currentPose.theta = m_recvPacket->bufToUByte();
+            currentPose.x = m_recvPacket->readVal<uint16_t>();
+            currentPose.y = m_recvPacket->readVal<uint16_t>();
+            currentPose.theta = m_recvPacket->readVal<uint8_t>();
             if (!equalsP(lastPose, currentPose) || first) {
                 if (!first) {
                     //emit drawPoseData(lastPose.x, lastPose.y, lastPose.theta, 0);
@@ -412,14 +413,14 @@ void SerialPortThread::parseCommand()
         case UPLOAD_NAV_PATH_ID : {
             std::cout << "get path ***********" << std::endl;
             PoseData prePose;
-            uint8_t count = m_recvPacket->bufToUByte();
+            uint8_t count = m_recvPacket->readVal<uint8_t>();
             std::vector<QPair<int, int>> navPath;
             navPath.emplace_back(QPair<int, int>(lastPose.x, lastPose.y));
             for (int i = 0; i < count; i++) {
 
                 PoseData currentPose;
-                currentPose.x = m_recvPacket->bufToUByte2();
-                currentPose.y = m_recvPacket->bufToUByte2();
+                currentPose.x = m_recvPacket->readVal<uint16_t>();
+                currentPose.y = m_recvPacket->readVal<uint16_t>();
                 navPath.emplace_back(QPair<int, int>(currentPose.x, currentPose.y));
 //                emit drawMovePath(prePose.x, prePose.y, currentPose.x, currentPose.y, 1);
 //                prePose.x = currentPose.x;
@@ -429,16 +430,21 @@ void SerialPortThread::parseCommand()
             break;
         }
         case UPLOAD_BOUND_ID: {
-            int x1 = m_recvPacket->bufToByte2();
-            int y1 = m_recvPacket->bufToByte2();
-            int x2 = m_recvPacket->bufToByte2();
-            int y2 = m_recvPacket->bufToByte2();
+            int x1 = m_recvPacket->readVal<uint16_t>();
+            int y1 = m_recvPacket->readVal<uint16_t>();
+            int x2 = m_recvPacket->readVal<uint16_t>();
+            int y2 = m_recvPacket->readVal<uint16_t>();
             emit drawBound(x1, y1, x2, y2, 0);
-            x1 = m_recvPacket->bufToByte2();
-            y1 = m_recvPacket->bufToByte2();
-            x2 = m_recvPacket->bufToByte2();
-            y2 = m_recvPacket->bufToByte2();
+            x1 = m_recvPacket->readVal<uint16_t>();
+            y1 = m_recvPacket->readVal<uint16_t>();
+            x2 = m_recvPacket->readVal<uint16_t>();
+            y2 = m_recvPacket->readVal<uint16_t>();
             emit drawBound(x1, y1, x2, y2, 1);
+            break;
+        }
+        case UPLOAD_MOVE_ID: {
+
+            break;
         }
         default:
             break;

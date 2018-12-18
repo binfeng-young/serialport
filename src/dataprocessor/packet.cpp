@@ -7,64 +7,54 @@
 
 Packet::Packet(uint16_t bufferSize, uint16_t headerLength, uint16_t footerLength)
 {
-    m_buf = new char[bufferSize];
-    m_maxLength = bufferSize;
+    buffer.set_capacity(bufferSize);
     m_headerLength = headerLength;
     m_footerLength = footerLength;
-    m_readLength = m_headerLength;
-    m_length = m_headerLength;
+    position_ = m_headerLength;
+    buffer.set_size(m_headerLength);
     m_isValid = true;
 }
 
-Packet::~Packet()
-{
-    if (nullptr != m_buf) {
-        delete[] m_buf;
-        m_buf = nullptr;
-    }
-}
+Packet::~Packet() {}
 
 void Packet::setBuf(char *buf)
 {
-    memcpy(&m_buf, buf, strlen(buf));
+    memcpy(buffer.get_data(), buf, strlen(buf));
 }
 
-const char *Packet::getBuf()
+DataBuffer Packet::getBuf()
 {
-    return m_buf;
+    return buffer;
 }
 
-bool Packet::setLength(uint16_t length)
+void Packet::setSize(size_t size)
 {
-    if (length > m_maxLength)
-        return false;
-    m_length = length;
-    return true;
+    buffer.set_size(size);
 }
 
-uint16_t Packet::getLength()
+size_t Packet::getSize()
 {
-    return m_length;
+    return buffer.get_size();
 }
 
 uint16_t Packet::getDataLength()
 {
-    return m_length - m_headerLength - m_footerLength;
+    return buffer.get_size() - m_headerLength - m_footerLength;
 }
 
 void Packet::setReadLength(uint16_t readLength)
 {
-    m_readLength = readLength;
+    position_ = readLength;
 }
 
 uint16_t Packet::getReadLength()
 {
-    return m_readLength;
+    return position_;
 }
 
 bool Packet::setHeaderLength(uint16_t length)
 {
-    if (length > m_maxLength)
+    if (length > buffer.get_capacity())
         return false;
     m_headerLength = length;
     return true;
@@ -83,12 +73,12 @@ uint16_t Packet::getFooterLength()
 
 uint16_t Packet::getDataReadLength()
 {
-    return m_readLength - m_headerLength;
+    return position_ - m_headerLength;
 }
 
 void Packet::resetRead()
 {
-    m_readLength = m_headerLength;
+    position_ = m_headerLength;
     resetValid();
 }
 
@@ -99,144 +89,18 @@ void Packet::resetValid()
 
 void Packet::empty()
 {
-    m_length = m_headerLength;
+    setSize(m_headerLength);
     resetValid();
 }
-
-void Packet::byteToBuf(int8_t val)
+size_t Packet::write(const void *data, size_t len)
 {
-    if (!hasWriteCapacity(1)) {
-        return;
+    if (!hasWriteCapacity(len)) {
+        return 0;
     }
-    memcpy(m_buf + m_length, &val, 1);
-    m_length += 1;
-}
-
-void Packet::byte2ToBuf(int16_t val)
-{
-    unsigned char c;
-    if (!hasWriteCapacity(2)) {
-        return;
-    }
-    c = (val >> 8) & 0xff;
-    memcpy(m_buf + m_length, &c, 1);
-    c = val & 0xff;
-    memcpy(m_buf + m_length + 1, &c, 1);
-    m_length += 2;
-}
-
-void Packet::byte4ToBuf(int32_t val)
-{
-    unsigned char c;
-    if (!hasWriteCapacity(4)) {
-        return;
-    }
-//    memcpy(m_buf + m_length, &val, 4);
-//    m_length += 4;
-    c = (val >> 24) & 0xff;
-    memcpy(m_buf + m_length, &c, 1);
-    c = (val >> 16) & 0xff;
-    memcpy(m_buf + m_length + 1, &c, 1);
-    c = (val >> 8) & 0xff;
-    memcpy(m_buf + m_length + 2, &c, 1);
-    c = val & 0xff;
-    memcpy(m_buf + m_length + 3, &c, 1);
-    m_length += 4;
-}
-
-void Packet::uByteToBuf(uint8_t val)
-{
-    if (!hasWriteCapacity(1)) {
-        return;
-    }
-    memcpy(m_buf + m_length, &val, 1);
-    m_length += 1;
-}
-
-void Packet::uByteSToBuf(uint8_t *buf, uint8_t num)
-{
-    for (uint8_t i = 0; i < num; i++) {
-        uByteToBuf(buf[i]);
-    }
-}
-
-void Packet::uByte2ToBuf(uint16_t val)
-{
-    unsigned char c;
-    if (!hasWriteCapacity(2)) {
-        return;
-    }
-    c = (val >> 8) & 0xff;
-    memcpy(m_buf + m_length, &c, 1);
-    c = val & 0xff;
-    memcpy(m_buf + m_length + 1, &c, 1);
-    m_length += 2;
-}
-
-void Packet::uByte4ToBuf(uint32_t val)
-{
-    unsigned char c;
-    if (!hasWriteCapacity(4)) {
-        return;
-    }
-//    memcpy(m_buf + m_length, &val, 4);
-//    m_length += 4;
-    c = (val >> 24) & 0xff;
-    memcpy(m_buf + m_length, &c, 1);
-    c = (val >> 16) & 0xff;
-    memcpy(m_buf + m_length + 1, &c, 1);
-    c = (val >> 8) & 0xff;
-    memcpy(m_buf + m_length + 2, &c, 1);
-    c = val & 0xff;
-    memcpy(m_buf + m_length + 3, &c, 1);
-    m_length += 4;
-}
-
-void Packet::strToBuf(const char *str)
-{
-    uint16_t tempLen;
-    if (str == NULL) {
-        str = "";
-    }
-    tempLen = strlen(str) + 1;
-
-    if (!hasWriteCapacity(tempLen)) {
-        return;
-    }
-    memcpy(m_buf + m_length, str, tempLen);
-    m_length += tempLen;
-}
-
-void Packet::strNToBuf(const char *str, int length)
-{
-    // Do not perform bounds checking because it breaks existing code.
-
-    //byte4ToBuf(length);
-    memcpy(m_buf + m_length, str, length);
-    m_length += length;
-}
-
-void Packet::strToBufPadded(const char *str, int length)
-{
-    uint16_t tempLen;
-    if (str == NULL) {
-        str = "";
-    }
-    tempLen = strlen(str);
-    if (!hasWriteCapacity(length)) {
-        return;
-    }
-
-    if (tempLen >= length) {
-        memcpy(m_buf + m_length, str, length);
-        m_length += length;
-    } else     // string is smaller than given length
-    {
-        memcpy(m_buf + m_length, str, tempLen);
-        m_length += tempLen;
-        memset(m_buf + m_length, 0, length - tempLen);
-        m_length += length - tempLen;
-    }
+    size_t size = buffer.get_size();
+    setSize(size + len);
+    memcpy(buffer.get_data() + size, data, len);
+    return len;
 }
 
 void Packet::dataToBuf(const void *data, int length)
@@ -244,105 +108,17 @@ void Packet::dataToBuf(const void *data, int length)
     if (data == NULL) {
         return;
     }
-
-    if (!hasWriteCapacity(length)) {
-        return;
-    }
-    memcpy(m_buf + m_length, data, length);
-    m_length += length;
+    write(data, length);
 }
 
-int8_t Packet::bufToByte()
+size_t Packet::read(void *data, size_t len)
 {
-    int8_t ret = 0;
-
-    if (isNextGood(1)) {
-        memcpy(&ret, m_buf + m_readLength, 1);
-        m_readLength += 1;
+    if (!isNextGood(len)) {
+        return 0;
     }
-    return (ret);
-}
-
-int16_t Packet::bufToByte2()
-{
-    int16_t ret = 0;
-    unsigned char c1, c2;
-
-    if (isNextGood(2)) {
-        memcpy(&c1, m_buf + m_readLength + 1, 1);
-        memcpy(&c2, m_buf + m_readLength, 1);
-        ret = (c1 & 0xff) | (c2 << 8);
-        m_readLength += 2;
-    }
-    return ret;
-}
-
-int32_t Packet::bufToByte4()
-{
-    int32_t ret = 0;
-    unsigned char c1, c2, c3, c4;
-
-    if (isNextGood(4)) {
-        memcpy(&c1, m_buf + m_readLength + 3, 1);
-        memcpy(&c2, m_buf + m_readLength + 2, 1);
-        memcpy(&c3, m_buf + m_readLength + 1, 1);
-        memcpy(&c4, m_buf + m_readLength, 1);
-        ret = (c1 & 0xff) | (c2 << 8) | (c3 << 16) | (c4 << 24);
-        m_readLength += 4;
-    }
-    return ret;
-}
-
-uint8_t Packet::bufToUByte()
-{
-    uint8_t ret = 0;
-
-    if (isNextGood(1)) {
-        memcpy(&ret, m_buf + m_readLength, 1);
-        m_readLength += 1;
-    }
-    return (ret);
-}
-
-void Packet::bufToUByteS(uint8_t *buf, uint8_t num)
-{
-
-    for (uint8_t i = 0; i < num; i++) {
-        buf[i] = bufToUByte();
-    }
-
-}
-
-uint16_t Packet::bufToUByte2()
-{
-    uint16_t ret = 0;
-    unsigned char c1, c2;
-
-    if (isNextGood(2)) {
-        memcpy(&c1, m_buf + m_readLength + 1, 1);
-        memcpy(&c2, m_buf + m_readLength, 1);
-        ret = (c1 & 0xff) | (c2 << 8);
-        m_readLength += 2;
-    }
-
-    return ret;
-}
-
-uint32_t Packet::bufToUByte4()
-{
-    int32_t ret = 0;
-    unsigned char c1, c2, c3, c4;
-
-    if (isNextGood(4)) {
-        memcpy(&c1, m_buf + m_readLength + 3, 1);
-        memcpy(&c2, m_buf + m_readLength + 2, 1);
-        memcpy(&c3, m_buf + m_readLength + 1, 1);
-        memcpy(&c4, m_buf + m_readLength, 1);
-        ret = (c1 & 0xff) | (c2 << 8) | (c3 << 16) | (c4 << 24);
-        m_readLength += 4;
-    }
-
-    return ret;
+    memcpy(data, buffer.get_data() + position_, len);
+    position_ += len;
+    return len;
 }
 
 void Packet::bufToStr(char *buf, int len)
@@ -356,14 +132,14 @@ void Packet::bufToStr(char *buf, int len)
     // see if we can read
     if (isNextGood(1)) {
         // while we can read copy over those bytes
-        for (i = 0; isNextGood(1) && i < (len - 1) && m_buf[m_readLength] != '\0';
-             ++m_readLength, ++i) {
-            buf[i] = m_buf[m_readLength];
+        for (i = 0; isNextGood(1) && i < (len - 1) && buffer[position_] != '\0';
+             ++position_, ++i) {
+            buf[i] = buffer[position_];
         }
         // if we stopped because of a null then copy that one too
-        if (m_buf[m_readLength] == '\0') {
-            buf[i] = m_buf[m_readLength];
-            m_readLength++;
+        if (buffer[position_] == '\0') {
+            buf[i] = buffer[position_];
+            position_++;
         } else if (i >= (len - 1)) {
 
             // Otherwise, if we stopped reading because the output buffer was full,
@@ -371,30 +147,19 @@ void Packet::bufToStr(char *buf, int len)
 
             // This is a bit redundant with the code below, but wanted to log the
             // string for debugging
-            m_buf[len - 1] = '\0';
+            buffer[len - 1] = '\0';
 
-            while (isNextGood(1) && (m_buf[m_readLength] != '\0')) {
-                m_readLength++;
+            while (isNextGood(1) && (buffer[position_] != '\0')) {
+                position_++;
             }
-            if (m_buf[m_readLength] == '\0') {
-                m_readLength++;
+            if (buffer[position_] == '\0') {
+                position_++;
             }
         } // end else if output buffer filled before null-terminator
     } // end if something to read
 
     // Make absolutely sure that the string is null-terminated...
     buf[len - 1] = '\0';
-}
-
-void Packet::bufToData(char *data, int length)
-{
-    if (data == NULL) {
-        return;
-    }
-    if (isNextGood(length)) {
-        memcpy(data, m_buf + m_readLength, length);
-        m_readLength += length;
-    }
 }
 
 //void duplicatePacket(Packet_t *src)
@@ -410,7 +175,7 @@ bool Packet::isNextGood(int bytes)
         return false;
 
     // make sure it comes in before the header
-    if (m_readLength + bytes <= m_length - m_footerLength)
+    if (position_ + bytes <= (int)buffer.get_size() - m_footerLength)
         return true;
 
     m_isValid = false;
@@ -424,7 +189,7 @@ bool Packet::hasWriteCapacity(int bytes)
     }
 
     // Make sure there's enough room in the packet
-    if ((m_length + bytes) <= m_maxLength) {
+    if ((buffer.get_size() + bytes) <= buffer.get_capacity()) {
         return true;
     }
 
@@ -441,8 +206,8 @@ bool Packet::isValid()
 
 uint8_t Packet::getID()
 {
-    if (m_length >= 5)
-        return m_buf[4];
+    if (buffer.get_size() >= 5)
+        return static_cast<uint8_t>(buffer[4]);
     else
         return 0;
 }
@@ -450,7 +215,7 @@ uint8_t Packet::getID()
 
 void Packet::setID(uint8_t id)
 {
-    m_buf[4] = id;
+    buffer[4] = id;
 }
 
 bool Packet::verifyCheckSum()
@@ -458,10 +223,11 @@ bool Packet::verifyCheckSum()
     unsigned short chksum;
     unsigned char c1, c2;
 
-    if (m_length - 2 < m_headerLength)
+    size_t size = buffer.get_size();
+    if (size - 2 < m_headerLength)
         return false;
-    c2 = m_buf[m_length - 2];
-    c1 = m_buf[m_length - 1];
+    c2 = static_cast<unsigned char>(buffer[size - 2]);
+    c1 = static_cast<unsigned char>(buffer[size - 1]);
     chksum = (c1 & 0xff) | (c2 << 8);
 
     if (chksum == calcCheckSum()) {
@@ -474,48 +240,34 @@ bool Packet::verifyCheckSum()
 uint16_t Packet::calcCheckSum()
 {
     int i;
-    unsigned char n;
+    unsigned char n, tmp1, tmp2;
     unsigned short c = 0;
 
     i = 4;
-    n = ((m_buf[2] << 8) | m_buf[3]) - 2;
+    n = (((unsigned char)buffer[2] << 8) | ((unsigned char)buffer[3])) - 2;
     while (n > 1) {
-        c += ((unsigned char) m_buf[i] << 8) | (unsigned char) m_buf[i + 1];
+        c += ((unsigned char) buffer[i] << 8) | (unsigned char) buffer[i + 1];
         c = c & 0xffff;
         n -= 2;
         i += 2;
     }
     if (n > 0)
-        c = c ^ (unsigned short) ((unsigned char) m_buf[i]);
+        c = c ^ (unsigned short) ((unsigned char) buffer[i]);
     return c;
 }
 
 void Packet::finalizePacket()
 {
-    uint16_t len = m_length;
+    uint16_t len = buffer.get_size();
     uint16_t chkSum;
 
-    m_length = 0;
-    uByteToBuf((uint8_t) SYNC1);
-    uByteToBuf((uint8_t) SYNC2);
-    uByte2ToBuf(len - m_headerLength + 3);
-    m_length = len;
+    buffer.set_size(0);
+    writeVal<uint8_t>((uint8_t) SYNC1);
+    writeVal<uint8_t>((uint8_t) SYNC2);
+    writeVal<uint16_t>(len - m_headerLength + 3);
+    buffer.set_size(len);
 
     chkSum = calcCheckSum();
-    uByte2ToBuf(chkSum);
+    writeVal<uint16_t>(chkSum);
 }
-
-//
-//Packet_t copyPacket()
-//{
-//    Packet_t temp;
-//    temp.footerLength = m_footerLength;
-//    temp.headerLength = m_headerLength;
-//    temp.isValid = m_isValid;
-//    temp.length = m_length;
-//    temp.readLength = m_readLength;
-//    memcpy(&temp.buf, &m_buf, m_length);
-//    return temp;
-//}
-
 
