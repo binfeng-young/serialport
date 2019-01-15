@@ -1,6 +1,14 @@
-//
-// Created by binfeng.yang on 2018/4/8.
-//
+/**
+ * Created by binfeng.yang on 2018/4/8.
+ *
+ * Packet Formats
+ *   Format:
+ *    +--------------------------------+-------------------+
+ *    |          header                |  data    | footer |
+ *    +-------+-------+------+--------------------+--------+
+ *    | sync1 | sync2 | .... | cmdID   |  .....   | CRC 16 |
+ *    +-------+-------+------+--------------------+--------+
+**/
 #ifndef SERIALPORT_PACKET_H
 #define SERIALPORT_PACKET_H
 
@@ -64,21 +72,13 @@ public:
 
     DataBuffer getBuf();
 
-    void setMaxLength(uint16_t bufferSize);
-
-    uint16_t getMaxLength();
-
     uint16_t getDataLength();
 
     void setReadLength(uint16_t readLength);
 
     uint16_t getReadLength();
 
-    bool setHeaderLength(uint16_t length);
-
     uint16_t getHeaderLength();
-
-    bool setFooterLength(uint16_t length);
 
     uint16_t getFooterLength();
 
@@ -113,22 +113,18 @@ public:
         return ret;
     }
 
-    void bufToStr(char *buf, int len);
-
     bool isNextGood(int bytes);
-
-    bool isValid();
 
     void finalizePacket();
 
 private:
     bool hasWriteCapacity(int bytes);
 private:
-    DataBuffer buffer;
+    DataBuffer buffer_;
     bool m_isValid;
     uint16_t position_;
-    uint16_t m_headerLength;
-    uint16_t m_footerLength;
+    uint16_t headerLength_;
+    uint16_t footerLength_;
 };
 
 #endif //SERIALPORT_PACKET_H
