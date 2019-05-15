@@ -194,7 +194,7 @@ void Packet::finalizePacket()
     buffer_.set_size(0);
     writeVal<uint8_t>((uint8_t) SYNC1);
     writeVal<uint8_t>((uint8_t) SYNC2);
-    writeVal<uint16_t>(len - headerLength_ + 3);
+    writeVal<uint16_t>(len - headerLength_ + 4);
     buffer_.set_size(len);
 
     chkSum = calcCheckSum();

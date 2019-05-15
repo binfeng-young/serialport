@@ -7,9 +7,8 @@
 
 #include <QtWidgets/QWidget>
 #include <QThread>
-
 class SerialPortThread;
-
+class MapThread;
 namespace Ui {
     class SerialPortWidget;
 }
@@ -27,21 +26,23 @@ public:
     void drawGridMap();
 
 public:
+    void wheelEvent(QWheelEvent *event);
+    void mousePressEvent(QMouseEvent *event);
+    void mouseMoveEvent(QMouseEvent *event);
+    void mouseDoubleClickEvent(QMouseEvent *event);
+
 
 signals:
 public slots:
-    void getSerialPorts();
-    void onOpened(bool opened);
-    void onShowString(const QString& string);
     void onDrawPoseData(int x, int y, int theta, int type);
     void onDrawMovePath(int x1, int y1, int x2, int y2);
     void onDrawNavPath(std::vector<QPair<int, int>> navPath);
     void onUpdateCurPose(int x, int y, int theta);
     void onDrawBound(int maxx, int maxy, int minx, int miny, int type);
-    void onSend();
 private:
     Ui::SerialPortWidget* ui;
     SerialPortThread* serialPortThread;
+    std::shared_ptr<MapThread> map_thread_;
     QSize mapSize_;
     QSize m_sceneSize;
     QSize m_cellSize;
@@ -50,6 +51,7 @@ private:
     QGraphicsRectItem* bound_;
     std::vector<std::vector<QGraphicsRectItem*>> gridMap_;
     std::vector<QGraphicsLineItem*> navPath_;
-
+    QPointF m_lastPointF;
+    qreal scale_;
 };
 #endif //SERIALPORTWIDGET_H

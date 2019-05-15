@@ -132,7 +132,15 @@ void SerialPortThread::onSend(const QByteArray& text)
     //sendBuff(toFold, 10);
 //    uint8_t virtualWall[] = {0xaa, 0x55, 0xa3, 0x27, 0x10, 0, 0, 0x27, 0x10, 0, 0, 0xf0, 0xd8, 0xff, 0xff, 0xf0, 0xd8, 0xff, 0xff, 02, 01, 0,0,0, 0x9f};
 //    sendBuff(virtualWall, 25);
-    sendBuff(text);
+    Packet  send_packet(128, 6, 2);
+    send_packet.empty();
+    //send_packet.setAck(ACK_OPT::NOTIFY);
+    send_packet.setID(0x73);
+    send_packet.writeVal<uint8_t>(0);
+    send_packet.writeVal<uint8_t>(1);
+    send_packet.finalizePacket();
+    //uint8_t move[]= {0xb5, 0x62, 0x00, 0x08, 0x00, 0x70, 0x09, 0xc4, 0x00, 0x00, 0x0a, 0x34};
+    sendBuff(QByteArray(send_packet.getBuf().get_data<char>(), send_packet.getSize()));
 }
 
 void SerialPortThread::readFromSerial()
