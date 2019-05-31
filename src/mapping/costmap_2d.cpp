@@ -8,6 +8,7 @@
 #include "costmap_2d.h"
 #include "cost_values.h"
 #include "costmap_tools.h"
+#include "footprint.h"
 
 using namespace std;
 
@@ -137,6 +138,45 @@ std::string Costmap2D::print() const
         }
     }
     return out;
+}
+
+
+void Costmap2D::inflationForObstacle(float radius)
+{
+    auto inflation = cells_;
+    auto foot = makeFootprintFromRadius(radius);
+
+    for (auto cell : CellIndexRangeIterator(limits_)) {
+        if (getCost(cell) == MapValue::LETHAL_OBSTACLE || cell.x == 0 || cell.y == 0 || cell.y == limits_.size_y - 1 || cell.x == limits_.size_x - 1) {
+            std::vector<Point> polygon;
+            transformFootprint(getWorld(cell), 0, foot, polygon);
+
+
+            std::vector<CellIndex> map_polygon;
+
+            for (const auto& i : polygon) {
+                auto index =getCellIndex(i);
+                if (!limits_.isContains(index)) {
+                    continue;
+                }
+                map_polygon.push_back(index);
+            }
+
+            if (map_polygon.empty()) {
+                continue;
+            }
+            std::vector<CellIndex> polygon_cells;
+
+            convexFillCells(map_polygon, polygon_cells);
+            for (auto index : polygon_cells) {
+                if (!limits_.isContains(index)) {
+                    continue;
+                }
+                inflation[toId(index)] = MapValue::LETHAL_OBSTACLE;
+            }
+        }
+    }
+    cells_ = inflation;
 }
 
 void Costmap2D::cropped()

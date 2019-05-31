@@ -25,15 +25,17 @@ public:
     ~SerialPortWidget();
     void drawGridMap();
 
-public:
+/*public:
     void wheelEvent(QWheelEvent *event);
     void mousePressEvent(QMouseEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
     void mouseDoubleClickEvent(QMouseEvent *event);
+    void mouseReleaseEvent(QMouseEvent *event);*/
 
 
 signals:
 public slots:
+    void onDrawMap(int x, int y, int val);
     void onDrawPoseData(int x, int y, int theta, int type);
     void onDrawMovePath(int x1, int y1, int x2, int y2);
     void onDrawNavPath(std::vector<QPair<int, int>> navPath);

@@ -6,7 +6,8 @@
 #define SERIALPORT_MAP_THREAD_H
 #include <QThread>
 #include <QtCore/QTime>
-#include <mapping/cell_index.h>
+#include <cell_index.h>
+#include "typedef.h"
 namespace bv {
 namespace mapping {
 class Costmap2D;
@@ -21,6 +22,7 @@ public:
     void bfs(const bv::mapping::CellIndex& cur_index);
     void dfs(const bv::mapping::CellIndex& cur_index, int dir);
 signals:
+    void drawMap(int x, int y, int val);
     void updateCurPose(int x, int y, int theta);
     void drawMovePath(int x1, int y1, int x2, int y2);
     void drawPoseData(int x, int y, int theta, int type);
@@ -31,7 +33,13 @@ private:
     qreal scale_;
     bv::mapping::CellIndex start_index_ = bv::mapping::CellIndex(0, 0);
     std::vector<int> vis_;
+    std::vector<int> vis2_;
     bv::mapping::CellIndex last_pose_index_;
+    std::vector<bv::mapping::Point> triangle_;
+    std::vector<bv::mapping::Point> rectangle_;
+    std::vector<bv::mapping::Point> circle_;
+    std::vector<bv::mapping::Point> semicircle_;
+    std::vector<bv::mapping::CellIndex> ins_;
 };
 
 #endif //SERIALPORT_MAP_THREAD_H

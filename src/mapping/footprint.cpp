@@ -115,6 +115,21 @@ void transformFootprint(const Point& offset, double theta, const std::vector<Poi
     }
 }
 
+std::vector<Point> makeTriangleFootprintFromRadius(const double& robot_radius)
+{
+
+    std::vector<Point> out = {Point{robot_radius, 0}
+                              , Point{-robot_radius, -robot_radius}, Point{-robot_radius, robot_radius}};
+    return out;
+}
+
+std::vector<Point> makeRectangleFootprintFromRadius(const double& robot_radius)
+{
+    std::vector<Point> out = {Point{robot_radius, robot_radius}, Point{robot_radius, -robot_radius}
+                              , Point{-robot_radius, -robot_radius}, Point{-robot_radius, robot_radius}};
+    return out;
+}
+
 void scaleFootprint(std::vector<Point> &footprint, double scale)
 {
     // pad footprint in place

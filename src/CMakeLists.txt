@@ -8,21 +8,26 @@ include_directories(dataprocessor)
 add_subdirectory(dataprocessor)
 include_directories(mapping)
 
-file(GLOB_RECURSE ALL_LIBRARY_HDRS "./mapping/*.h")
-file(GLOB_RECURSE ALL_LIBRARY_SRCS "./mapping/*.cpp")
-
+file(GLOB_RECURSE MAP_LIBRARY_HDRS "./mapping/*.h")
+file(GLOB_RECURSE MAP_LIBRARY_SRCS "./mapping/*.cpp")
+#file(GLOB_RECURSE NAV_LIBRARY_HDRS "./navigation/*.h")
+#file(GLOB_RECURSE NAV_LIBRARY_SRCS "./navigation/*.cpp")
+set(ALL_LIBRARY_HDRS ${MAP_LIBRARY_HDRS} ${NAV_LIBRARY_HDRS})
+set(ALL_LIBRARY_SRCS ${MAP_LIBRARY_SRCS} ${NAV_LIBRARY_SRCS})
 set(baseic_srcs
     main.cpp
     #mainwindow.cpp
     serialportwidget.cpp
     serialportthread.cpp
     map_thread.cpp
+    map_view.cpp
     )
 set(moc_files
     #mainwindow.h
     serialportwidget.h
     serialportthread.h
     map_thread.h
+    map_view.h
     )
 set(uic_files
     #mainwindow.ui

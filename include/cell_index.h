@@ -6,37 +6,13 @@
 #define CELL_INDEX_H
 
 #include <memory>
-
+#include <vector>
+#include "pointx.h"
 namespace bv {
 namespace mapping {
 
 // convenient for storing x/y point pairs
-struct CellIndex {
-    int x;
-    int y;
-    CellIndex() { x = 0; y = 0; }
-
-    CellIndex(int x, int y)
-    {
-        this->x = x;
-        this->y = y;
-    }
-    bool operator==(const CellIndex& other) const {
-        return x == other.x && y == other.y;
-    }
-
-    bool operator!=(const CellIndex& other) const {
-        return !operator==(other);
-    }
-
-    CellIndex operator+(const CellIndex& other) const {
-        return {x + other.x, y + other.y};
-    }
-
-    CellIndex operator-(const CellIndex& other) const {
-        return {x - other.x, y - other.y};
-    }
-};
+typedef Point_2i CellIndex;
 
 class CellLimits {
 public:
@@ -53,6 +29,13 @@ public:
     {
         return index.y * size_x + index.x;
     }
+
+    std::vector<CellIndex> nhood4(const CellIndex &idx, bool inc_out_side = false);
+
+    std::vector<CellIndex> nhood8(const CellIndex &idx, bool inc_out_side = false);
+
+    std::vector<CellIndex> nhoodRadius(const CellIndex &idx, bool inc_out_side = false);
+
     int size_x = 0;
     int size_y = 0;
 };
@@ -61,7 +44,7 @@ public:
 class CellIndexRangeIterator
     : public std::iterator<std::input_iterator_tag, CellIndex> {
 public:
-    // Constructs a new iterator for the specified range.
+    // Constructs a new iterator for the specified range-[x,y].
     CellIndexRangeIterator(const CellIndex& min_xy_index,
                            const CellIndex& max_xy_index)
         : min_xy_index_(min_xy_index),
@@ -71,8 +54,7 @@ public:
     // Constructs a new iterator for everything contained in 'cell_limits'.
     explicit CellIndexRangeIterator(const CellLimits& cell_limits)
         : CellIndexRangeIterator(CellIndex(0, 0),
-                                 CellIndex(cell_limits.size_x - 1,
-                                           cell_limits.size_y - 1)) {}
+                                 CellIndex(cell_limits.size_x, cell_limits.size_y) - CellIndex(1, 1)) {}
 
     CellIndexRangeIterator& operator++() {
         // This is a necessary evil. Bounds checking is very expensive and needs to

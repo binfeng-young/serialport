@@ -34,6 +34,8 @@ void padFootprint(std::vector<Point> &footprint, double width_padding, double le
 std::vector<Point> makeFootprintFromRadius(const double& robot_radius);
 
 std::vector<Point> makeObstacleFootprintFromRadius(const double& robot_radius);
+std::vector<Point> makeTriangleFootprintFromRadius(const double& robot_radius);
+std::vector<Point> makeRectangleFootprintFromRadius(const double& robot_radius);
 
 void transformFootprint(const Point& offset, double theta, const std::vector<Point> &footprint_spec,
                         std::vector<Point> &oriented_footprint);

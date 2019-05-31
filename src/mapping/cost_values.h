@@ -45,10 +45,10 @@ namespace mapping {
 
 
 enum MapValue : unsigned char {
-    NO_INFORMATION = 3,//255;
-    LETHAL_OBSTACLE = 2,//254;
-    INSCRIBED_INFLATED_OBSTACLE = 0,//253;
-    FREE_SPACE = 1,
+    NO_INFORMATION = 255,//255;
+    LETHAL_OBSTACLE = 254,//254;
+    INSCRIBED_INFLATED_OBSTACLE = 253,//253;
+    FREE_SPACE = 0,
 };
 enum BoundType
 {

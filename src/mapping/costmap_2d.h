@@ -131,8 +131,10 @@ public:
 
     CellIndex getCellIndex(const Point &point) const
     {
-        return {(int)std::lround((point.x - min_point_.x) / resolution_),
-                (int)std::lround((point.y - min_point_.y) / resolution_)};
+//        return {(int)std::lround((point.x - min_point_.x) / resolution_),
+//                (int)std::lround((point.y - min_point_.y) / resolution_)};
+        return {(int)std::floor((point.x - min_point_.x) / resolution_),
+            (int)std::floor((point.y - min_point_.y) / resolution_)};
     }
 
     CellIndex getCellIndexEnforceBounds(const Point &point) const
@@ -154,8 +156,10 @@ public:
 
     Point getWorld(const CellIndex &cell_index) const
     {
-        return {min_point_.x + (cell_index.x) * resolution_,
-                min_point_.y + (cell_index.y) * resolution_};
+//        return {min_point_.x + (cell_index.x) * resolution_,
+//                min_point_.y + (cell_index.y) * resolution_};
+        return {min_point_.x + (cell_index.x + 0.5f) * resolution_,
+            min_point_.y + (cell_index.y + 0.5f) * resolution_};
     }
 
     /**
@@ -184,6 +188,8 @@ public:
     std::string print() const;
 
     void cropped();
+
+    void inflationForObstacle(float radius);
 
     /**
      * @brief  Move the origin of the costmap to a new location.... keeping data when it can

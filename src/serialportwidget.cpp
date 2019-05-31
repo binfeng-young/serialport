@@ -27,7 +27,7 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
     qRegisterMetaType<std::vector<QPair<int, int>>>("std::vector<QPair<int, int>>");
     scale_ = 1;
     mapSize_ = QSize(80, 80);
-    m_sceneSize = QSize(800, 800);
+    m_sceneSize = QSize(1200, 1200);
     m_cellSize = QSize(m_sceneSize.width() / mapSize_.width(), m_sceneSize.height() / mapSize_.height());
     map_thread_ = std::make_shared<MapThread>(mapSize_.width(), mapSize_.height());
     QGraphicsScene *scene = new QGraphicsScene();
@@ -35,8 +35,8 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
     ui->mapView->setScene(scene);
 
     ui->mapView->setStyleSheet("border:none; background:lightgray;");
-    //ui->mapView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    //ui->mapView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    ui->mapView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    ui->mapView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     serialPortThread = new SerialPortThread();
     connect(ui->openButton, SIGNAL(clicked()), serialPortThread, SLOT(onOpen()));
     connect(ui->clean_map_button, &QPushButton::clicked, [&](){
@@ -44,8 +44,11 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
         serialPortThread->reSetMap();
         drawGridMap();
     });
+    //setMouseTracking(true);
 
     ui->mapView->setMouseTracking(true);
+
+    connect(map_thread_.get(), SIGNAL(drawMap(int, int, int)), this, SLOT(onDrawMap(int, int, int)));
     connect(map_thread_.get(), SIGNAL(drawPoseData(int, int, int, int)), this, SLOT(onDrawPoseData(int, int, int, int)));
     connect(map_thread_.get(), SIGNAL(drawMovePath(int, int, int, int)), this, SLOT(onDrawMovePath(int, int, int, int)));
     //connect(serialPortThread, SIGNAL(drawNavPath(std::vector<QPair<int, int>>)), this, SLOT(onDrawNavPath(std::vector<QPair<int, int>>)));
@@ -98,6 +101,13 @@ enum MapInfoType {
     LETHAL_OBSTACLE,
     INSCRIBED_INFLATED_OBSTACLE,
 };
+
+void SerialPortWidget::onDrawMap(int x, int y, int val) {
+    QGraphicsRectItem *itemRect = gridMap_[x][y];
+    auto ch = (QGraphicsTextItem*)itemRect->childItems()[0];
+    ch->setPlainText(QString("%1").arg(val));
+}
+
 void SerialPortWidget::onDrawPoseData(int x, int y, int theta, int type)
 {
 
@@ -143,8 +153,8 @@ void SerialPortWidget::onUpdateCurPose(int x, int y, int theta) {
     auto p1 = itemRect->mapFromScene(itemRect->boundingRect().center());
     //int xx =
     //int yy = (mapSize_.height() -1 - x) * m_cellSize.height() + 3;
-    int width = m_cellSize.width()*2;
-    int height = m_cellSize.height()*2;
+    int width = m_cellSize.width()*3;
+    int height = m_cellSize.height()*3;
 
     QGraphicsScene *scene = ui->mapView->scene();
     delete curPose_;
@@ -205,7 +215,7 @@ void SerialPortWidget::onDrawNavPath(std::vector<QPair<int, int>> navPath)
 
 void SerialPortWidget::onDrawMovePath(int x1, int y1, int x2, int y2)
 {
-    QColor color(0, 255, 255);
+    QColor color(0x00FF00);
     QGraphicsScene *scene = ui->mapView->scene();
     //std::cout << " lene :" << x1 << " "<< y1 << " " << x2 << " " << y2 << std::endl;
     scene->addLine((x1 + 0.5) * m_cellSize.width(), (y1+ 0.5) * m_cellSize.height(), (x2+ 0.5) * m_cellSize.width(),
@@ -220,77 +230,37 @@ void SerialPortWidget::drawGridMap()
     bound_ = nullptr;
     gridMap_.clear();
     QGraphicsScene *scene = ui->mapView->scene();
+    QFont font;
+    font.setPointSize(6);
     for (int i = 0; i < mapSize_.width(); i++) {
         std::vector<QGraphicsRectItem*> gridMapW;
         gridMapW.reserve(static_cast<unsigned long>(mapSize_.height()));
         for (int j = 0; j < mapSize_.height(); j++) {
-            gridMapW.push_back(scene->addRect(
-                QRectF(i * m_cellSize.width(), j * m_cellSize.height(), m_cellSize.width(), m_cellSize.height()),
+            QPoint p(i * m_cellSize.width(), j * m_cellSize.height());
+            QSizeF size(m_cellSize.width(), m_cellSize.height());
+            auto item = scene->addRect(
+                QRectF(p, size),
                 //QPen(QColor(255, 255, 255)),
-                QPen(QColor(204, 240, 200)),
-                QBrush(QColor(255, 255, 255))));
+                QPen(QColor(255, 255, 255)),
+                QBrush(QColor(255, 255, 255)));
+            gridMapW.push_back(item);
+            QGraphicsTextItem* text = new QGraphicsTextItem(item);
+            text->setPlainText(QString("%1").arg(0));
+            QRectF rect = text->boundingRect();
+            text->setDefaultTextColor(QColor(0xDC143C));
+            p.setX(p.x() + m_cellSize.width()/2 - rect.width()/2);
+            text->setPos(p);
+            text->setFont(font);
         }
         gridMap_.push_back(gridMapW);
     }
 
     map_thread_->start();
 }
+/*
 void SerialPortWidget::wheelEvent(QWheelEvent *event)
 {
-    const QPointF p0scene = ui->mapView->mapToScene(event->pos());
-    //qreal factor = std::pow(1.01, event->delta());
-    int wheelDeltaValue = event->delta();
-    if (!wheelDeltaValue) {
-        return;
-    }
-    // 向上滚动，放大;
-    if (wheelDeltaValue < 0) {
-        ui->mapView->scale(1.1, 1.1);
-    }
-        // 向下滚动，缩小;
-    else {
-        ui->mapView->scale(1.0 / 1.1, 1.0 / 1.1);
-    }
-    //ui->mapView->scale(factor, factor);
-    const QPointF p1mouse = ui->mapView->mapFromScene(p0scene);
-    const QPointF move = p1mouse - event->pos(); // The move
-    ui->mapView->horizontalScrollBar()->setValue(move.x() + ui->mapView->horizontalScrollBar()->value());
-    ui->mapView->verticalScrollBar()->setValue(move.y() + ui->mapView->verticalScrollBar()->value());
 
-//    // 获取当前鼠标相对于view的位置;
-//    QPointF cursorPoint = event->pos();
-//    // 获取当前鼠标相对于scene的位置;
-//    QPointF scenePos = ui->mapView->mapToScene(QPoint(cursorPoint.x(), cursorPoint.y()));
-//    ui->mapView->centerOn(scenePos);
-
-//    // 获取view的宽高;
-//    qreal viewWidth = ui->mapView->viewport()->width();
-//    qreal viewHeight = ui->mapView->viewport()->height();
-//
-//    // 获取当前鼠标位置相当于view大小的横纵比例;
-//    qreal hScale = cursorPoint.x() / viewWidth;
-//    qreal vScale = cursorPoint.y() / viewHeight;
-//
-//    // 当前放缩倍数;
-//    qreal scaleFactor = ui->mapView->matrix().m11();
-//    int wheelDeltaValue = event->delta();
-//    if (!wheelDeltaValue) {
-//        return;
-//    }
-//    // 向上滚动，放大;
-//    if (wheelDeltaValue < 0) {
-//        ui->mapView->scale(1.1, 1.1);
-//    }
-//        // 向下滚动，缩小;
-//    else {
-//        ui->mapView->scale(1.0 / 1.1, 1.0 / 1.1);
-//    }
-//
-//    // 将scene坐标转换为放大缩小后的坐标;
-//    QPointF viewPoint = ui->mapView->matrix().map(scenePos);
-//    // 通过滚动条控制view放大缩小后的展示scene的位置;
-//    ui->mapView->horizontalScrollBar()->setValue(int(viewPoint.x() - viewWidth * hScale));
-//    ui->mapView->verticalScrollBar()->setValue(int(viewPoint.y() - viewHeight * vScale));
 }
 
 void SerialPortWidget::mousePressEvent(QMouseEvent *event)
@@ -298,9 +268,16 @@ void SerialPortWidget::mousePressEvent(QMouseEvent *event)
     m_lastPointF = event->pos();
     qDebug() << m_lastPointF.x() << m_lastPointF.y();
 }
+void SerialPortWidget::mouseReleaseEvent(QMouseEvent *event)
+{
+    m_lastPointF = QPointF(0, 0);
+}
 
 void SerialPortWidget::mouseMoveEvent(QMouseEvent *event)
 {
+    if (m_lastPointF == QPointF(0, 0)) {
+        return;
+    }
     QPointF disPointF = event->pos() - m_lastPointF;
     qDebug() << disPointF.x() << disPointF.y();
     m_lastPointF = event->pos();
@@ -313,3 +290,4 @@ void SerialPortWidget::mouseDoubleClickEvent(QMouseEvent *event)
 {
 
 }
+*/
