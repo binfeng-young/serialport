@@ -14,6 +14,7 @@ Boustrophedon::Boustrophedon(std::shared_ptr<Costmap2D> costmap)
     map_ = std::move(costmap);
     line_number_ = 0;
     cell_number_ = 0;
+    graph_ = std::make_shared<Graph>(100);
 }
 
 
@@ -22,125 +23,150 @@ void Boustrophedon::fillCell(int number_of_line, int cell_number)
 
     const Vec2i& line = free_next_list_[number_of_line];
 
-    if (path_sets_.find(cell_number) == path_sets_.end()) {
-        path_sets_.insert(std::make_pair(cell_number, std::vector<CellIndex>()));
+    if (line_sets_.find(cell_number) == line_sets_.end()) {
+        line_sets_.insert(std::make_pair(cell_number, std::vector<Vec3i>()));
     }
-    auto &path = path_sets_[cell_number];
-    if ((path.size() / 2) % 2) {
-        path.emplace_back(line.t, line_number_);
-        path.emplace_back(line.s, line_number_);
-    } else {
-        path.emplace_back(line.s, line_number_);
-        path.emplace_back(line.t, line_number_);
-    }
-    for (int i = 0; i < (line.t - line.s + 1); i ++) {
-        map_->setCost(CellIndex(line.s + i, line_number_), cell_number);
+
+    line_sets_[cell_number].push_back(Vec3i(line, line_number_));
+    for (int i = line.s ; i <= line.t; i ++) {
+        map_->setCost(CellIndex(i, line_number_), cell_number);
     }
 }
 void Boustrophedon::decomposition()
 {
     while (line_number_ < map_->getLimits().size_y - 1) {
         update();
-        //relContinuity
-        if (relativeContinuity(obstacles_cur_list_, obstacles_next_list)) {
-            auto connect_free = getConnection(free_cur_list_, free_next_list_);
-            std::vector<int> actual;
-            for (int i = 0; i < free_next_list_.size(); i++) {
-                size_t j = findConnection(connect_free, i, false);
-                if (j == connect_free.size()) {
-                    cell_number_++;
-                    fillCell(i, cell_number_);
-                    actual.push_back(cell_number_);
-                } else {
-                    int pre_i = connect_free[j].s;
-                    fillCell(i, previous_cell_list_[pre_i]);
-                    actual.push_back(previous_cell_list_[pre_i]);
-                }
-            }
-            previous_cell_list_ = actual;
+        if (free_next_list_.empty()) {
             continue;
         }
-        //discontinuity
-        auto dis_obstacles = discontinuousSets(obstacles_cur_list_, obstacles_next_list);
-        bool cur_continuity = true;
-        int num = 0;
+/*        int num = 0;
         std::vector<int> actual;
-        for (int i = 1; i < obstacles_next_list.size(); i++) {
-            bool next_continuity = cur_continuity;
-            cur_continuity = (std::find(dis_obstacles.begin(), dis_obstacles.end(), i) == dis_obstacles.end());
-            if (!(cur_continuity && next_continuity)) {
+
+        auto connect_free = getConnection(free_cur_list_, free_next_list_);
+        for (int i = 0; i < free_next_list_.size();) {
+            if (num >= free_cur_list_.size()) {
                 cell_number_++;
+                fillCell(i, cell_number_);
                 actual.push_back(cell_number_);
-                fillCell(i - 1, cell_number_);
-                for (int k = num; k < free_cur_list_.size(); k++) {
-                    if (free_next_list_[i - 1].t >= free_cur_list_[k].s) {
-                        num++;
-                    }
-                }
+                i ++;
                 continue;
             }
-
-            if (isConnection(free_cur_list_[num], free_next_list_[i - 1])) {
-                int jump = 0;
-                for (int k = num; k < free_cur_list_.size(); k++) {
-                    if (free_next_list_[i - 1].t >= free_cur_list_[k].s) {
-                        jump++;
-                    } else break;
-                }
-                if (jump == 1) {
-                    fillCell(i - 1, previous_cell_list_[num]);
-                    actual.push_back(previous_cell_list_[num]);
-                } else { //out
-                    cell_number_++;
-                    fillCell(i - 1, cell_number_);
-                    actual.push_back(cell_number_);
-                }
-                num += jump;
-            } else if (free_next_list_[i - 1].t < free_cur_list_[num].s) {
-                cell_number_++;
-                fillCell(i - 1, cell_number_);
-                actual.push_back(cell_number_);
-            } else {
-                bool connect = false;
-                int k = num;
-                for (; k < free_cur_list_.size(); k++) {
-                    if (isConnection(free_cur_list_[k], free_next_list_[i - 1])) {
-                        connect = true;
-                        break;
+            int jump = 0;
+            std::vector<int> free_next_in;
+            free_next_in.push_back(i);
+            int j = num;
+            for (; j < free_cur_list_.size(); j ++) {
+                if (isConnection(free_cur_list_[j], free_next_list_[i])) {
+                    jump = j + 1;
+                    for (int k = i + 1; k < free_next_list_.size(); k++) {
+                        if (isConnection(free_cur_list_[j], free_next_list_[k])) {
+                            free_next_in.push_back(k);
+                        } else break;
                     }
-                }
-                if (connect) {
-                    fillCell(i - 1, previous_cell_list_[k]);
-                    actual.push_back(previous_cell_list_[k]);
-                } else {
+                } //else break;
+            }
+            if (jump == num + 1 && free_next_in.size() == 1) {
+                fillCell(i, previous_cell_list_[j]);
+                actual.push_back(previous_cell_list_[j]);
+            } else { // jump > 1 is out,  free_next_in.size > 1 is in
+                for (auto p : free_next_in) {
                     cell_number_++;
-                    fillCell(i - 1, cell_number_);
+                    fillCell(p, cell_number_);
                     actual.push_back(cell_number_);
                 }
             }
+            num = j;
+            i += free_next_in.size();
         }
-        previous_cell_list_ = actual;
+        previous_cell_list_ = actual;*/
+         //relContinuity
+      if (relativeContinuity(obstacles_cur_list_, obstacles_next_list)) {
+          auto connect_free = getConnection(free_cur_list_, free_next_list_);
+          std::vector<int> actual;
+          for (int i = 0; i < free_next_list_.size(); i++) {
+              size_t j = findConnection(connect_free, i, false);
+              if (j == connect_free.size()) {
+                  cell_number_++;
+                  fillCell(i, cell_number_);
+                  actual.push_back(cell_number_);
+              } else {
+                  int pre_i = connect_free[j].s;
+                  fillCell(i, previous_cell_list_[pre_i]);
+                  actual.push_back(previous_cell_list_[pre_i]);
+              }
+          }
+          previous_cell_list_ = actual;
+          continue;
+      }
+      //discontinuity
+      auto dis_obstacles = discontinuousSets(obstacles_cur_list_, obstacles_next_list);
+      bool cur_continuity = true;
+      int num = 0;
+      std::vector<int> actual;
+      for (int i = 1; i < obstacles_next_list.size(); i++) {
+          bool next_continuity = cur_continuity;
+          cur_continuity = (std::find(dis_obstacles.begin(), dis_obstacles.end(), i) == dis_obstacles.end());
+          if (!(cur_continuity && next_continuity)) {
+              cell_number_++;
+              actual.push_back(cell_number_);
+              fillCell(i - 1, cell_number_);
+              for (int k = num; k < free_cur_list_.size(); k++) {
+                  if (free_next_list_[i - 1].t >= free_cur_list_[k].s) {
+                      num++;
+                  }
+              }
+              continue;
+          }
+
+          if (num < free_cur_list_.size() && isConnection(free_cur_list_[num], free_next_list_[i - 1])) {
+              int jump = 0;
+              for (int k = num; k < free_cur_list_.size(); k++) {
+                  if (free_next_list_[i - 1].t >= free_cur_list_[k].s) {
+                      jump++;
+                  } else break;
+              }
+              if (jump == 1) {
+                  fillCell(i - 1, previous_cell_list_[num]);
+                  actual.push_back(previous_cell_list_[num]);
+              } else { //out
+                  cell_number_++;
+                  fillCell(i - 1, cell_number_);
+                  actual.push_back(cell_number_);
+              }
+              num += jump;
+          } else if (num < free_cur_list_.size() && free_next_list_[i - 1].t < free_cur_list_[num].s) {
+              cell_number_++;
+              fillCell(i - 1, cell_number_);
+              actual.push_back(cell_number_);
+          } else {
+              bool connect = false;
+              int k = num;
+              for (; k < free_cur_list_.size(); k++) {
+                  if (isConnection(free_cur_list_[k], free_next_list_[i - 1])) {
+                      connect = true;
+                      break;
+                  }
+              }
+              if (connect) {
+                  fillCell(i - 1, previous_cell_list_[k]);
+                  actual.push_back(previous_cell_list_[k]);
+              } else {
+                  cell_number_++;
+                  fillCell(i - 1, cell_number_);
+                  actual.push_back(cell_number_);
+              }
+          }
+      }
+      previous_cell_list_ = actual;
     }
 }
 
 void Boustrophedon::update()
 {
+    obstacles_cur_list_ = obstacles_next_list;
+    free_cur_list_ = free_next_list_;
+    processLine(line_number_ + 1, obstacles_next_list, free_next_list_);
     line_number_ ++;
-    getNextLine();
-    processLine(line_cur_, obstacles_cur_list_, free_cur_list_);
-    processLine(line_next_, obstacles_next_list, free_next_list_);
-
-}
-
-void Boustrophedon::getNextLine()
-{
-    auto limits = map_->getLimits();
-    if (line_number_ >= limits.size_y) {
-        line_cur_ = line_next_;
-    } else {
-        line_cur_ = line_number_ - 1;
-        line_next_ = line_number_;
-    }
 }
 
 

@@ -214,6 +214,27 @@ void MapThread::run()
         emit drawMap(cell.x, cell.y, map_->getCost(cell));
     }
 
+    auto lines_set = bcd.getLines();
+
+    for (auto& lines_s : lines_set)
+    {
+        std::vector<CellIndex> path;
+        auto &lines = lines_s.second;
+        for (int i = 0; i < lines.size(); i ++) {
+            auto vec3 = lines[i];
+            if ((i / 2) % 2) {
+                path.emplace_back(vec3.t, vec3.u, vec3,);
+                path.emplace_back(line.s, line_number_);
+            } else {
+                path.emplace_back(line.s, line_number_);
+                path.emplace_back(line.t, line_number_);
+            }
+        }
+    }
+
+
+
+
     auto path_sets = bcd.getPath();
     for (const auto& path_pair : path_sets) {
         const auto& path = path_pair.second;

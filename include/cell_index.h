@@ -7,12 +7,12 @@
 
 #include <memory>
 #include <vector>
-#include "pointx.h"
+#include "vec.h"
 namespace bv {
 namespace mapping {
 
 // convenient for storing x/y point pairs
-typedef Point_2i CellIndex;
+typedef Vec2i CellIndex;
 
 class CellLimits {
 public:
