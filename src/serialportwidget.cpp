@@ -188,7 +188,7 @@ void SerialPortWidget::onUpdateCurPose(int x, int y, int theta) {
     int height = m_cellSize.height()*3;
 
     QGraphicsScene *scene = ui->mapView->scene();
-    delete curPose_;
+    scene->removeItem(curPose_);
     curPose_ = scene->addEllipse(QRectF(p1.x() - width / 2, p1.y() - height / 2, width, height), QPen(QBrush(QColor(0, 128, 255)),2)
         , QBrush(QColor(255, 255, 255, 20)));
 
@@ -206,12 +206,12 @@ void SerialPortWidget::onDrawBound(int maxx, int maxy, int minx, int miny, int t
     int width = m_cellSize.width() * abs(maxy - miny);
     int height = m_cellSize.height() * abs(maxx - minx);
     if (!type) {
-        delete curRegion_;
+        scene->removeItem(curRegion_);
         curRegion_ = scene->addRect(QRectF(p1.x(), p1.y(), width, height), QPen(QColor(0xFF00FF))
             , QBrush(QColor(255, 255, 255, 0)));
 
     } else {
-        delete bound_;
+        scene->removeItem(bound_);
         bound_ = scene->addRect(QRectF(p1.x(), p1.y(), width, height), QPen(QColor(0x8B6508))
             , QBrush(QColor(255, 255, 255, 0)));
     }
@@ -223,14 +223,16 @@ void SerialPortWidget::onDrawNavPath(std::vector<QPair<int, int>> navPath)
         return;
     }
     std::cout << "on Draw nav path" << navPath.size() << std::endl;
+
+    QGraphicsScene *scene = ui->mapView->scene();
     for (auto &path : navPath_) {
-        delete path;
-        path = nullptr;
+        //delete path;
+        scene->removeItem(path);
+        //path = nullptr;
     }
     navPath_.clear();
     std::cout << "nav path size: " << navPath.size() << std::endl;
     QColor color(0x0000EE);
-    QGraphicsScene *scene = ui->mapView->scene();
     int x1 = navPath[0].first;
     int y1 = navPath[0].second;
     for (int i = 1; i < navPath.size(); i++) {
