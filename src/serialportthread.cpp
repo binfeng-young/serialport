@@ -4,16 +4,17 @@
 
 #include "serialportthread.h"
 #include "packet.h"
+#include "sensor_data.h"
 #include <QSerialPort>
-#include <iostream>
 #include <QTime>
+#include <iostream>
 
 SerialPortThread::SerialPortThread()
     : m_serialDevice(nullptr)
       , m_portStatus(PortStatus::closed)
       , m_receiveHex(false)
 {
-    m_recvPacket = new Packet(1024, 5, 2);
+    m_recvPacket = new Packet(1024, 8, 2);
     m_sendBuf = new char[1024]();
     m_sendPending = false;
     qRegisterMetaType<QSerialPort::SerialPortError>("QSerialPort::SerialPortError");
@@ -214,50 +215,55 @@ SPStatus SerialPortThread::receivePacket(uint8_t *c, uint16_t &length)
         case STATE_SYNC1: {
             //m_recvPacket->empty();
             m_recvPacket->setSize(0);
-            m_recvPacket->writeVal<uint8_t>(c[0]);
             if (c[0] != SYNC1) {
                 return SPStatus::RX_SYNCFAIL;
             }
+            m_recvPacket->writeVal<uint8_t>(c[0]);
             //std::cout << "SYNC1" << std::endl;
             state = STATE_SYNC2;
             break;
         }
         case STATE_SYNC2: {
             // 为帧头2时，跳转到状态3，获取数据，否则跳回状态1
-            m_recvPacket->writeVal<uint8_t>(c[0]);
             if (c[0] != SYNC2) {
                 state = STATE_SYNC1;
                 return SPStatus::RX_SYNCFAIL;
             }
+            m_recvPacket->writeVal<uint8_t>(c[0]);
             //std::cout << "SYNC2" << std::endl;
             state = STATE_LENGTH;
-            length = 2;
+            length = 5;
             break;
         }
-        case STATE_LENGTH:
-            length = ((uint16_t) c[0] & 0xff) << 8 | ((uint16_t) c[1] & 0xff);
-            printf("%x %x ***\r\n", c[0], c[1]);
-            m_recvPacket->writeVal<uint16_t>(length);
-            if (length > 5) {
-                //std::cout << "SYNC_LENGTH " << length << std::endl;
-                state = STATE_ACQUIRE_DATA;
-            } else {
-                length = 1;
+        case STATE_LENGTH: {
+            length      = *(uint32_t *)(&c[0]) + 2;
+            uint8_t v_l = c[0] + c[1] + c[2] + c[3];
+            if (v_l != c[4]) {
                 state = STATE_SYNC1;
                 return SPStatus::RX_SYNCFAIL;
             }
+            m_recvPacket->write(c, 5);
+            //std::cout << "SYNC_LENGTH " << length << std::endl;
+            state = STATE_ACQUIRE_DATA;
             break;
+        }
         case STATE_ACQUIRE_DATA:
             m_recvPacket->write(c, length);
-            if (m_recvPacket->verifyCheckSum()) {
+            auto size = m_recvPacket->getSize();
+            /*for (int i = 0; i < size; i++) {
+                printf("0x%x ", (uint8_t)m_recvPacket->getBuf()[i]);
+            }
+            printf("\n");
+            std::cout << m_recvPacket->getSize() << std::endl;*/
+            //if (m_recvPacket->verifyCheckSum()) {
                 //std::cout << "STATE_ACQUIRE_DATA" << std::endl;
                 m_recvPacket->resetRead();
                 parseCommand();
                 spStatus =  SPStatus::RX_COMPLETE;
-            } else {
-                //std::cout << "verify fail" << std::endl;
+            /*} else {
+                std::cout << "verify fail" << std::endl;
                 spStatus = SPStatus::RX_SYNCFAIL;
-            }
+            }*/
             state = STATE_SYNC1;
             length = 1;
     }
@@ -278,6 +284,7 @@ SPStatus SerialPortThread::receiveProcess()
     do {
         uint8_t* c = new uint8_t[length]();
         if (!readBuff(c, length, 200)) {
+            delete[] c;
             return SPStatus::RX_IDLE;
         }
         //std::cout << std::string().copy((char*)c, length, 0) << std::endl;
@@ -445,6 +452,58 @@ void SerialPortThread::parseCommand()
         case UPLOAD_MOVE_ID: {
 
             break;
+        }
+        case UPLOAD_SENSOR_ID : {
+            //std::cout << ">>>> UPLOAD_SENSOR_ID" << std::endl;
+            SensorData data;
+            m_recvPacket->toVal(data.encoder_t);
+            m_recvPacket->toVal(data.encoder_l);
+            m_recvPacket->toVal(data.encoder_r);
+            m_recvPacket->toVal(data.imu_t);
+            m_recvPacket->toVal(data.a_x);
+            m_recvPacket->toVal(data.a_y);
+            m_recvPacket->toVal(data.a_z);
+            m_recvPacket->toVal(data.w_x);
+            m_recvPacket->toVal(data.w_y);
+            m_recvPacket->toVal(data.w_z);
+            m_recvPacket->toVal(data.Roll);
+            m_recvPacket->toVal(data.Pitch);
+            m_recvPacket->toVal(data.Yaw);
+            m_recvPacket->toVal(data.right_wall);
+            m_recvPacket->toVal(data.cliff_and_bump);
+            m_recvPacket->toVal(data.led_status);
+            m_recvPacket->toVal(data.charge_state);
+            m_recvPacket->toVal(data.current_fan);
+            m_recvPacket->toVal(data.off_ground);
+            m_recvPacket->toVal(data.left_piles);
+            m_recvPacket->toVal(data.right_piles);
+            m_recvPacket->toVal(data.current_left_wheel_avg);
+            m_recvPacket->toVal(data.current_right_wheel_avg);
+            m_recvPacket->toVal(data.current_roll);
+            m_recvPacket->toVal(data.current_left_side);
+            m_recvPacket->toVal(data.current_right_side);
+            m_recvPacket->toVal(data.current_left_wheel);
+            m_recvPacket->toVal(data.current_right_wheel);
+            m_recvPacket->toVal(data.ir_state);
+            m_recvPacket->toVal(data.current_lidar);
+            m_recvPacket->toVal(data.left_wall);
+            m_recvPacket->toVal(data.carpet);
+            m_recvPacket->toVal(data.lidar_collide);
+            m_recvPacket->toVal(data.ultrasoinc_value);
+            m_recvPacket->toVal(data.front_left_piles);
+            m_recvPacket->toVal(data.front_right_piles);
+            m_recvPacket->toVal(data.left_front_collide);
+            m_recvPacket->toVal(data.mid_front_collide);
+            m_recvPacket->toVal(data.right_front_collide);
+            emit sensorUpdate(data);
+            break;
+        }
+        case UPLOAD_LOG_ID: {
+            uint8_t type = m_recvPacket->readVal<uint8_t>();
+            uint8_t len  = m_recvPacket->readVal<uint8_t>();
+            char data[len];
+            m_recvPacket->read((void *)data, len);
+            emit showString(QString::fromUtf8(data, len));
         }
         default:
             break;

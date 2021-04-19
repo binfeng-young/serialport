@@ -3,6 +3,7 @@
 //
 
 #include "packet.h"
+#include "crc.h"
 #include <cstring>
 
 Packet::Packet(uint16_t bufferSize, uint16_t headerLength, uint16_t footerLength)
@@ -156,18 +157,21 @@ void Packet::setID(uint8_t id)
 {
     buffer_[headerLength_ - 1] = id;
 }
-
+#define CRC_START_16 0x0000
+#define CRC_POLY_16 0xA001
 bool Packet::verifyCheckSum()
 {
     size_t size = buffer_.get_size();
     if (size - 2 < headerLength_)
         return false;
-    auto c2 = static_cast<unsigned char>(buffer_[size - 2]);
-    auto c1 = static_cast<unsigned char>(buffer_[size - 1]);
-    auto check_sum = static_cast<uint16_t >((c1 & 0xff) | (c2 << 8));
+    auto c2 = static_cast<uint8_t>(buffer_[size - 1]);
+    auto c1 = static_cast<uint8_t>(buffer_[size - 2]);
+    auto check_sum = static_cast<uint16_t>(c1 | (c2 << 8u));
+    printf("%d %d %d\n", check_sum, *((uint16_t*)(&buffer_[size - 2])),Crc::update(CRC_START_16, reinterpret_cast<const uint8_t *>(buffer_.get_data<uint8_t *>() + 7), size - headerLength_ - 1));
 
-    return check_sum == calcCheckSum();
+    return check_sum == Crc::update(CRC_START_16, reinterpret_cast<const uint8_t *>(buffer_.get_data<uint8_t *>() + 7), size - headerLength_ - 1);
 }
+
 
 uint16_t Packet::calcCheckSum()
 {
@@ -186,18 +190,31 @@ uint16_t Packet::calcCheckSum()
     return c;
 }
 
+uint8_t len_calcCheckSum(uint32_t data_len)
+{
+    uint8_t i = 0;
+    uint8_t sum = 0;
+    while(i < sizeof(data_len))
+    {
+        sum += (data_len >> i*8) & 0xffu;
+        i++;
+    }
+    return sum;
+}
+
 void Packet::finalizePacket()
 {
     uint16_t len = buffer_.get_size();
-    uint16_t chkSum;
-
+    uint32_t data_len = len - headerLength_ + 1;
+    uint8_t ChkLen = len_calcCheckSum(data_len);
     buffer_.set_size(0);
     writeVal<uint8_t>((uint8_t) SYNC1);
     writeVal<uint8_t>((uint8_t) SYNC2);
-    writeVal<uint16_t>(len - headerLength_ + 3);
+    writeVal<uint32_t>(data_len);
+    writeVal<uint8_t>(ChkLen);
     buffer_.set_size(len);
 
-    chkSum = calcCheckSum();
+    uint16_t chkSum = Crc::update(CRC_START_16, reinterpret_cast<const uint8_t *>(buffer_.get_data<uint8_t *>() + 7), len - headerLength_ + 1);
     writeVal<uint16_t>(chkSum);
 }
 

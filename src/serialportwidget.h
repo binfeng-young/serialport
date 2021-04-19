@@ -5,8 +5,9 @@
 #ifndef SERIALPORTWIDGET_H
 #define SERIALPORTWIDGET_H
 
-#include <QtWidgets/QWidget>
+#include "sensor_data.h"
 #include <QThread>
+#include <QtWidgets/QWidget>
 
 class SerialPortThread;
 
@@ -36,6 +37,7 @@ public slots:
     void onDrawPoseData(int x, int y, int theta, int type);
     void onDrawMovePath(int x1, int y1, int x2, int y2);
     void onDrawNavPath(std::vector<QPair<int, int>> navPath);
+    void onSensorUpdate(const SensorData &sensorData);
     void onUpdateCurPose(int x, int y, int theta);
     void onDrawBound(int maxx, int maxy, int minx, int miny, int type);
     void onSend();

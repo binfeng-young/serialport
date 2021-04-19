@@ -6,6 +6,8 @@ set(srcs
         endianess.cpp
         cl_endian.h
         dataprocessor.cpp
-        dataprocessor.h)
+        dataprocessor.h
+        crc.h
+        crc.cpp)
 
 add_library(dataprocessor ${srcs})

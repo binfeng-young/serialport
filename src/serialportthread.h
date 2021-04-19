@@ -5,10 +5,11 @@
 #ifndef SERIALPORT_SERIALPORTTHREAD_H
 #define SERIALPORT_SERIALPORTTHREAD_H
 
-#include <QThread>
-#include <mutex>
+#include "sensor_data.h"
 #include <QSerialPort>
+#include <QThread>
 #include <QtCore/QTime>
+#include <mutex>
 #include <queue>
 
 class Packet;
@@ -53,6 +54,7 @@ signals:
     void drawNavPath(std::vector<QPair<int, int>> navPath);
     void updateCurPose(int x, int y, int theta);
     void drawBound(int maxx, int maxy, int minx, int miny, int type);
+    void sensorUpdate(const SensorData &sensorData);
 
 public slots:
     void onOpen();

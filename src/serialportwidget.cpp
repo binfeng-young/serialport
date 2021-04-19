@@ -16,9 +16,12 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
     :
     QWidget(parent), ui(new Ui::SerialPortWidget)
 {
+    unsigned short m = -1;
+    std::cout << (m > 1) << std::endl;
     ui->setupUi(this);
     ui->refreshPorts->setIcon(QIcon(":images/view-refresh.svg"));
     qRegisterMetaType<std::vector<QPair<int, int>>>("std::vector<QPair<int, int>>");
+    qRegisterMetaType<SensorData>("SensorData");
     mapSize_ = QSize(144, 144);
     m_sceneSize = QSize(864, 864);
     m_cellSize = QSize(m_sceneSize.width() / mapSize_.width(), m_sceneSize.height() / mapSize_.height());
@@ -53,6 +56,7 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
     connect(serialPortThread, SIGNAL(updateCurPose(int, int, int)), this, SLOT(onUpdateCurPose(int, int, int)));
     connect(serialPortThread, SIGNAL(drawBound(int, int, int, int, int)), this, SLOT(onDrawBound(int, int, int, int, int)));
     connect(ui->sendButton, SIGNAL(clicked()), this, SLOT(onSend()));
+    connect(serialPortThread, SIGNAL(sensorUpdate(const SensorData &)), this, SLOT(onSensorUpdate(const SensorData &)));
     getSerialPorts();
     ui->sendButton->setDisabled(true);
     ui->receivePlainTextEdit->setFont(QFont(tr("Consolas"), 11));
@@ -63,6 +67,15 @@ SerialPortWidget::SerialPortWidget(QWidget *parent)
     //ui->label->setTextInteractionFlags(Qt::TextSelectableByMouse); // set default
     //ui->mapView->setFrameShape (QFrame::Box);
     drawGridMap();
+   /* auto init_lcd = [](QLCDNumber *lcd) {
+        lcd->setDigitCount(6);
+        lcd->setBinMode();
+    };
+    init_lcd(ui->dock_sig_l);
+    init_lcd(ui->dock_sig_fl);
+    init_lcd(ui->dock_sig_fr);
+    init_lcd(ui->dock_sig_r);*/
+
 /*    static int direction[4][2] = {0, 1, 1, 0, -1, 0, 0, -1};
     auto isOutMap = [](int x, int y, unsigned short int size_x, unsigned short int size_y)->bool {
         return x < 0 || y < 0 || x >= size_x || y >= size_y;
@@ -244,6 +257,14 @@ void SerialPortWidget::onDrawNavPath(std::vector<QPair<int, int>> navPath)
         y1 = y2;
     }
 
+}
+
+void SerialPortWidget::onSensorUpdate(const SensorData &sensorData)
+{
+    ui->dock_sig_l->display(QString::number(sensorData.left_piles>>1,2).rightJustified(5,'0'));
+    ui->dock_sig_fl->display(QString::number(sensorData.front_left_piles>>1,2).rightJustified(5,'0'));
+    ui->dock_sig_fr->display(QString::number(sensorData.front_right_piles>>1,2).rightJustified(5,'0'));
+    ui->dock_sig_r->display(QString::number(sensorData.right_piles>>1,2).rightJustified(5,'0'));
 }
 
 void SerialPortWidget::onDrawMovePath(int x1, int y1, int x2, int y2)

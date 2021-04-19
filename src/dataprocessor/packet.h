@@ -22,7 +22,8 @@
 #define SYNC2                           0X62
 
 
-#define UPLOAD_MOTOR_PACKET_ID          0x30
+#define UPLOAD_SENSOR_ID          0x23
+#define UPLOAD_LOG_ID          0x25
 #define UPLOAD_IO_PACKET_ID             0x31
 #define UPLOAD_STATUS_PACKET_ID         0x41
 #define UOLOAD_VERSION_PACKET_ID        0x51
@@ -111,6 +112,10 @@ public:
             Endian::swap_if_big(&ret, len);
         }
         return ret;
+    }
+    template<typename Type>
+    void toVal(Type &ret, bool big = true) {
+        ret = readVal<Type>(big);
     }
 
     bool isNextGood(int bytes);
